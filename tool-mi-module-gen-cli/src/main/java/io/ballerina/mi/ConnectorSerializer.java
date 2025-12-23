@@ -28,9 +28,6 @@ import io.ballerina.mi.util.JsonTemplateBuilder;
 import io.ballerina.mi.util.Utils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import io.ballerina.compiler.api.symbols.ArrayTypeSymbol;
-import io.ballerina.compiler.api.symbols.TypeDescKind;
-import io.ballerina.compiler.api.symbols.TypeSymbol;
 import org.ballerinalang.diagramutil.connector.models.connector.Type;
 import org.ballerinalang.diagramutil.connector.models.connector.types.PathParamType;
 
@@ -274,23 +271,6 @@ public class ConnectorSerializer {
                 }
                 return context.toString().toUpperCase();
             });
-            handlebar.registerHelper("arrayElementType", (context, options) -> {
-                if (!(context instanceof FunctionParam functionParam)) {
-                    return "";
-                }
-                TypeSymbol typeSymbol = functionParam.getTypeSymbol();
-                if (typeSymbol == null) {
-                    return "";
-                }
-                TypeSymbol actualTypeSymbol = Utils.getActualTypeSymbol(typeSymbol);
-                if (!(actualTypeSymbol instanceof ArrayTypeSymbol arrayTypeSymbol)) {
-                    return "";
-                }
-                TypeSymbol memberType = arrayTypeSymbol.memberTypeDescriptor();
-                TypeDescKind memberKind = Utils.getActualTypeKind(memberType);
-                String elementType = Utils.getParamTypeName(memberKind);
-                return elementType != null ? elementType : "";
-            });
             handlebar.registerHelper("unwrapOptional", ((context, options) -> {
                 if (context instanceof Optional<?> optional) {
                     if (optional.isPresent()) {
@@ -450,19 +430,13 @@ public class ConnectorSerializer {
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, boolAttr);
                 break;
             case UNION:
-                if (!(functionParam instanceof UnionFunctionParam unionParam)) {
-                    // Defensive: if the model was not created as UnionFunctionParam, fallback to a simple string input
-                    Attribute fallbackAttr = new Attribute(functionParam.getValue(), displayName,
-                            INPUT_TYPE_STRING_OR_EXPRESSION, "", functionParam.isRequired(),
-                            functionParam.getDescription(), "", "", isCombo);
-                    fallbackAttr.setEnableCondition(functionParam.getEnableCondition());
-                    builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, fallbackAttr);
-                    break;
+                // Ensure the functionParam is actually a UnionFunctionParam instance
+                if (!(functionParam instanceof UnionFunctionParam unionFunctionParam)) {
+                    throw new IllegalArgumentException("FunctionParam with paramType 'union' must be an instance of UnionFunctionParam for parameter: " + functionParam.getValue());
                 }
-
                 // Gather the data types in the union
-                if (!unionParam.getUnionMemberParams().isEmpty()) {
-                    Combo comboField = getComboField(unionParam, functionParam.getValue(),
+                if (!unionFunctionParam.getUnionMemberParams().isEmpty()) {
+                    Combo comboField = getComboField(unionFunctionParam, functionParam.getValue(),
                             functionParam.getDescription());
                     builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField).addSeparator(ATTRIBUTE_SEPARATOR);
                 }

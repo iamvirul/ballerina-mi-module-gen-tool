@@ -35,9 +35,8 @@ public class TestRecordType {
         BalConnectorConfig config = new BalConnectorConfig(moduleInfo);
 
         // Create a context for connection initialization
-        TestMessageContext initContext = ConnectorContextBuilder.connectorContext()
+        TestMessageContext initContext = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
-                .isConnection(true)
                 .objectTypeName("RecordClient")
                 .addParameter("serviceUrl", "string", "http://test.api.com")
                 .addParameter("connectionType", "string", "RECORDPROJECT_RECORDCLIENT")
@@ -57,7 +56,7 @@ public class TestRecordType {
     public void testSimpleRecord() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("simpleRecordFunction")
                 .returnType("string")
@@ -81,7 +80,7 @@ public class TestRecordType {
     public void testNestedRecord() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("getUserSummary")
                 .returnType("string")
@@ -105,7 +104,7 @@ public class TestRecordType {
     public void testOptionalFieldsAndArrays() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("summarizeOrder")
                 .returnType("string")
@@ -129,7 +128,7 @@ public class TestRecordType {
     public void testNestedArraysSum() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("computeCatalogTotal")
                 .returnType("float")
@@ -155,7 +154,7 @@ public class TestRecordType {
         BalConnectorFunction connector = new BalConnectorFunction();
 
         // Present
-        TestMessageContext ctxPresent = ConnectorContextBuilder.connectorContext()
+        TestMessageContext ctxPresent = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("formatProfile")
                 .returnType("string")
@@ -175,7 +174,7 @@ public class TestRecordType {
         Assert.assertEquals(resPresent, "u1:true:2", "Profile present should reflect emailOptIn and tag count");
 
         // Absent
-        TestMessageContext ctxAbsent = ConnectorContextBuilder.connectorContext()
+        TestMessageContext ctxAbsent = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("formatProfile")
                 .returnType("string")
@@ -199,7 +198,7 @@ public class TestRecordType {
     public void testGetUppercasedPerson() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("getUppercasedPerson")
                 .returnType("record")

@@ -35,9 +35,8 @@ public class TestJsonType {
         BalConnectorConfig config = new BalConnectorConfig(moduleInfo);
 
         // Create a context for connection initialization
-        TestMessageContext initContext = ConnectorContextBuilder.connectorContext()
+        TestMessageContext initContext = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
-                .isConnection(true)
                 .objectTypeName("JsonClient")
                 .addParameter("serviceUrl", "string", "http://test.api.com")
                 .addParameter("connectionType", "string", "JSONPROJECT_JSONCLIENT")
@@ -57,7 +56,7 @@ public class TestJsonType {
     public void testGetJsonAsString() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("getJsonAsString")
                 .returnType("string")
@@ -80,7 +79,7 @@ public class TestJsonType {
     public void testCreateJsonObject() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("createJsonObject")
                 .returnType("json")
@@ -108,7 +107,7 @@ public class TestJsonType {
     public void testMergeJson() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("mergeJson")
                 .returnType("json")
@@ -135,7 +134,7 @@ public class TestJsonType {
     public void testGetArrayLength() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("getArrayLength")
                 .returnType("int")
@@ -158,7 +157,7 @@ public class TestJsonType {
     public void testTransformJson() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("transformJson")
                 .returnType("json")
@@ -186,7 +185,7 @@ public class TestJsonType {
     public void testGetNestedValue() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("getNestedValue")
                 .returnType("string")
@@ -209,7 +208,7 @@ public class TestJsonType {
     public void testSumJsonArray() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("sumJsonArray")
                 .returnType("int")
@@ -233,7 +232,7 @@ public class TestJsonType {
         BalConnectorFunction connector = new BalConnectorFunction();
 
         // Test with existing key
-        TestMessageContext contextExists = ConnectorContextBuilder.connectorContext()
+        TestMessageContext contextExists = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("hasKey")
                 .returnType("boolean")
@@ -255,7 +254,7 @@ public class TestJsonType {
         Assert.assertEquals(resultExists, "true", "Should return true for existing key");
 
         // Test with non-existing key
-        TestMessageContext contextNotExists = ConnectorContextBuilder.connectorContext()
+        TestMessageContext contextNotExists = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("hasKey")
                 .returnType("boolean")
@@ -281,7 +280,7 @@ public class TestJsonType {
     public void testGetArrayElement() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("getArrayElement")
                 .returnType("json")
@@ -307,7 +306,7 @@ public class TestJsonType {
     public void testCreateNestedJson() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("createNestedJson")
                 .returnType("json")
@@ -339,7 +338,7 @@ public class TestJsonType {
         BalConnectorFunction connector = new BalConnectorFunction();
 
         String jsonArray = "[{\"id\":1,\"status\":\"active\"},{\"id\":2,\"status\":\"inactive\"},{\"id\":3,\"status\":\"active\"}]";
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("filterJsonArray")
                 .returnType("json")
@@ -367,7 +366,7 @@ public class TestJsonType {
     public void testCountKeys() throws Exception {
         BalConnectorFunction connector = new BalConnectorFunction();
 
-        TestMessageContext context = ConnectorContextBuilder.connectorContext()
+        TestMessageContext context = TestArrayConnector.ConnectorContextBuilder.connectorContext()
                 .connectionName(CONNECTION_NAME)
                 .methodName("countKeys")
                 .returnType("int")
