@@ -462,7 +462,7 @@ public class ConnectorSerializer {
                 }
 
                 // Add attribute fields for each type with enable conditions
-                List<FunctionParam> unionMembers = unionParam.getUnionMemberParams();
+                List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
                 for (FunctionParam member : unionMembers) {
                     writeJsonAttributeForFunctionParam(member, index, paramLength, builder, false);
                     builder.addConditionalSeparator((unionMembers.indexOf(member) < unionMembers.size() - 1),
