@@ -238,6 +238,26 @@ public class BalConnectorAnalyzer implements Analyzer {
                 pathParam.typeName = paramTypeName;
                 pathParams.add(pathParam);
             }
+
+            // Collect all parameter names (path params, function params) to check for conflicts
+            Set<String> allParamNames = new HashSet<>(pathParamNames);
+            if (params.isPresent()) {
+                List<ParameterSymbol> parameterSymbols = params.get();
+                for (ParameterSymbol parameterSymbol : parameterSymbols) {
+                    Optional<String> paramNameOpt = parameterSymbol.getName();
+                    if (paramNameOpt.isPresent()) {
+                        allParamNames.add(paramNameOpt.get());
+                    }
+                }
+            }
+
+            // Check if synapse name conflicts with any parameter name and make it unique if needed
+            Optional<String> methodNameOpt = methodSymbol.getName();
+            if (allParamNames.contains(finalSynapseName) || 
+                (methodNameOpt.isPresent() && allParamNames.contains(methodNameOpt.get()))) {
+                // Add a suffix to make the synapse name unique and avoid conflicts
+                finalSynapseName = finalSynapseName + "_operation";
+            }
             
             Component component = new Component(finalSynapseName, docString, functionType, Integer.toString(i), pathParams, List.of(), returnType);
             
@@ -247,7 +267,7 @@ public class BalConnectorAnalyzer implements Analyzer {
                 component.setParam(operationIdParam);
             }
 
-            // Extract regular function parameters (non-path parameters)
+            // Now add all function parameters (we keep them all, synapse name is made unique instead)
             int functionParamIndex = 0;
             if (params.isPresent()) {
                 List<ParameterSymbol> parameterSymbols = params.get();

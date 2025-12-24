@@ -28,7 +28,7 @@
     <parameter name="{{uppercase ../connectionType}}_{{name}}" description="{{documentation}}"/>
     {{/each ~}}
     {{#each initComponent.functionParams ~}}
-    <parameter name="{{value}}" description="{{description}}"/>
+    <parameter name="{{sanitizeParamName value}}" description="{{description}}"/>
     {{/each ~}}
     {{/each ~}}
     <sequence>
@@ -38,7 +38,7 @@
         <property name="{{uppercase ../connectionType}}_{{key}}" value="{{value}}"/>
         {{/each ~}}
         {{#each initComponent.functionParams ~}}
-        <property name="{{uppercase ../connectionType}}_param{{@index}}" value="{{value}}"/>
+        <property name="{{uppercase ../connectionType}}_param{{@index}}" value="{{sanitizeParamName value}}"/>
         <property name="{{uppercase ../connectionType}}_paramType{{@index}}" value="{{paramType}}"/>
         {{/each ~}}
         {{writeConfigXmlProperties this}}

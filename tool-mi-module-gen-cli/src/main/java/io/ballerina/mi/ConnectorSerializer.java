@@ -194,6 +194,10 @@ public class ConnectorSerializer {
                         .replace("\t", "\\t")
                         .replace("\u0000", "\\u0000");
             });
+            handlebar.registerHelper("sanitizeParamName", (context, options) -> {
+                if (context == null) return "";
+                return Utils.sanitizeParamName(context.toString());
+            });
             handlebar.registerHelper("checkFuncType", (context, options) -> {
                 FunctionType functionType = (FunctionType) context;
                 return functionType.toString().equals(options.param(0));
@@ -419,31 +423,33 @@ public class ConnectorSerializer {
                                                            JsonTemplateBuilder builder,
                                                            boolean isCombo) throws IOException {
         String paramType = functionParam.getParamType();
+        String paramValue = functionParam.getValue();
+        String sanitizedParamName = Utils.sanitizeParamName(paramValue);
         String displayName = functionParam.getValue();
         switch (paramType) {
             case STRING, XML, JSON, MAP, RECORD, ARRAY:
-                Attribute stringAttr = new Attribute(functionParam.getValue(), displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                Attribute stringAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
                         "", functionParam.isRequired(), functionParam.getDescription(), "",
                         "", isCombo);
                 stringAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, stringAttr);
                 break;
             case INT:
-                Attribute intAttr = new Attribute(functionParam.getValue(), displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                Attribute intAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
                         "", functionParam.isRequired(), functionParam.getDescription(), VALIDATE_TYPE_REGEX,
                         INTEGER_REGEX, isCombo);
                 intAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, intAttr);
                 break;
             case DECIMAL, FLOAT:
-                Attribute decAttr = new Attribute(functionParam.getValue(), displayName,
+                Attribute decAttr = new Attribute(sanitizedParamName, displayName,
                         INPUT_TYPE_STRING_OR_EXPRESSION, "", functionParam.isRequired(),
                         functionParam.getDescription(), VALIDATE_TYPE_REGEX, DECIMAL_REGEX, isCombo);
                 decAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, decAttr);
                 break;
             case BOOLEAN:
-                Attribute boolAttr = new Attribute(functionParam.getValue(), displayName, INPUT_TYPE_BOOLEAN,
+                Attribute boolAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_BOOLEAN,
                         "", functionParam.isRequired(), functionParam.getDescription(), "",
                         "", isCombo);
                 boolAttr.setEnableCondition(functionParam.getEnableCondition());
@@ -482,34 +488,35 @@ public class ConnectorSerializer {
     private static void writeJsonAttributeForPathParam(PathParamType pathParam, int index, int paramLength,
                                                       JsonTemplateBuilder builder) throws IOException {
         String paramType = pathParam.typeName;
+        String sanitizedParamName = Utils.sanitizeParamName(pathParam.name);
         String displayName = pathParam.name;
         String description = ""; // PathParamType doesn't have documentation field
         
         switch (paramType) {
             case STRING, XML, JSON, MAP, RECORD, ARRAY:
-                Attribute stringAttr = new Attribute(pathParam.name, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                Attribute stringAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
                         "", true, description, "", "", false);
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, stringAttr);
                 break;
             case INT:
-                Attribute intAttr = new Attribute(pathParam.name, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                Attribute intAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
                         "", true, description, VALIDATE_TYPE_REGEX, INTEGER_REGEX, false);
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, intAttr);
                 break;
             case DECIMAL, FLOAT:
-                Attribute decAttr = new Attribute(pathParam.name, displayName,
+                Attribute decAttr = new Attribute(sanitizedParamName, displayName,
                         INPUT_TYPE_STRING_OR_EXPRESSION, "", true, description, 
                         VALIDATE_TYPE_REGEX, DECIMAL_REGEX, false);
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, decAttr);
                 break;
             case BOOLEAN:
-                Attribute boolAttr = new Attribute(pathParam.name, displayName, INPUT_TYPE_BOOLEAN,
+                Attribute boolAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_BOOLEAN,
                         "", true, description, "", "", false);
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, boolAttr);
                 break;
             default:
                 // Default to string for unknown types
-                Attribute defaultAttr = new Attribute(pathParam.name, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                Attribute defaultAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
                         "", true, description, "", "", false);
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, defaultAttr);
                 break;
@@ -527,8 +534,9 @@ public class ConnectorSerializer {
         String unionComboValues = unionJoiner.toString();
         String defaultValue = unionMembers.getFirst().getParamType().equals(RECORD) ?
                 unionMembers.getFirst().getTypeSymbol().getName().orElseThrow() : unionMembers.getFirst().getParamType();
-        // Combo field for selecting the data type
-        String comboName = String.format("%s%s", paramName, "DataType");
+        // Combo field for selecting the data type - sanitize the parameter name
+        String sanitizedParamName = Utils.sanitizeParamName(paramName);
+        String comboName = String.format("%s%s", sanitizedParamName, "DataType");
         return new Combo(comboName, comboName, INPUT_TYPE_COMBO, unionComboValues, defaultValue,
                 unionFunctionParam.isRequired(), unionFunctionParam.getEnableCondition(), helpTip);
     }

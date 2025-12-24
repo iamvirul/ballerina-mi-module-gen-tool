@@ -154,15 +154,34 @@ public class BalModuleAnalyzer implements Analyzer {
             pathParams.add(pathParam);
         }
 
-        Component component = new Component(synapseName, documentationString, functionType, "0", pathParams, Collections.emptyList(), returnTypeName);
-
-        // Extract regular function parameters (non-path parameters)
+        // Collect all parameter names (path params, function params) to check for conflicts
+        Set<String> allParamNames = new HashSet<>(pathParamNames);
         int noOfParams = 0;
         int functionParamIndex = 0;
         if (params.isPresent()) {
             List<ParameterSymbol> parameterSymbols = params.get();
             noOfParams = parameterSymbols.size();
 
+            for (ParameterSymbol paramSymbol : parameterSymbols) {
+                Optional<String> paramNameOpt = paramSymbol.getName();
+                if (paramNameOpt.isPresent()) {
+                    allParamNames.add(paramNameOpt.get());
+                }
+            }
+        }
+
+        // Check if synapse name conflicts with any parameter name and make it unique if needed
+        String finalSynapseName = synapseName;
+        if (allParamNames.contains(synapseName) || allParamNames.contains(functionName.get())) {
+            // Add a suffix to make the synapse name unique and avoid conflicts
+            finalSynapseName = synapseName + "_operation";
+        }
+
+        Component component = new Component(finalSynapseName, documentationString, functionType, "0", pathParams, Collections.emptyList(), returnTypeName);
+
+        // Now add all function parameters (we keep them all, synapse name is made unique instead)
+        if (params.isPresent()) {
+            List<ParameterSymbol> parameterSymbols = params.get();
             for (ParameterSymbol paramSymbol : parameterSymbols) {
                 // Skip path parameters as they are handled separately
                 Optional<String> paramNameOpt = paramSymbol.getName();

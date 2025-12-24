@@ -115,7 +115,9 @@ public class ParamFactory {
                         memberParam = new FunctionParam(Integer.toString(memberIndex), memberParamName, paramType);
                         memberParam.setTypeSymbol(memberTypeSymbol);
                     }
-                    memberParam.setEnableCondition("[{\"" + paramName + "DataType\": \"" + actualParamType + "\"}]");
+                    // Use sanitized parameter name in enable condition for consistency
+                    String sanitizedParamName = io.ballerina.mi.util.Utils.sanitizeParamName(paramName);
+                    memberParam.setEnableCondition("[{\"" + sanitizedParamName + "DataType\": \"" + actualParamType + "\"}]");
                     functionParam.addUnionMemberParam(memberParam);
                     memberIndex++;
                 }
