@@ -86,6 +86,11 @@ public class BalModuleAnalyzer implements Analyzer {
 
         // Generate synapse name based on function type (handles resource functions)
         String synapseName = Utils.generateSynapseName(functionSymbol, functionType);
+        
+        // Replace dots with underscores in synapse name if connector module name has dots
+        if (connector.getModuleName().contains(".")) {
+            synapseName = synapseName.replace(".", "_");
+        }
 
         // Extract path parameters from resource path segments (for resource functions)
         List<PathParamType> pathParams = new ArrayList<>();

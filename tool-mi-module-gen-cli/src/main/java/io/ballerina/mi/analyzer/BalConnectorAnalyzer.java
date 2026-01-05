@@ -72,6 +72,11 @@ public class BalConnectorAnalyzer implements Analyzer {
         ModuleSymbol moduleSymbol = classSymbol.getModule().orElseThrow(() -> new IllegalStateException("Client class is outside the module"));
         String moduleName = moduleSymbol.getName().orElseThrow(() -> new IllegalStateException("Module name not defined"));
         String connectionType = String.format("%s_%s", moduleName, clientClassName);
+        
+        // Replace dots with underscores in connectionType if module name has dots
+        if (moduleName.contains(".")) {
+            connectionType = connectionType.replace(".", "_");
+        }
 
         Connector connector = Connector.getConnector();
         Connection connection = new Connection(connector, connectionType, clientClassName, Integer.toString(connector.getConnections().size()));
@@ -153,6 +158,11 @@ public class BalConnectorAnalyzer implements Analyzer {
             
             // Fallback to default if no generator succeeded
             String synapseName = synapseNameOpt.orElseGet(() -> Utils.generateSynapseName(methodSymbol, functionType));
+            
+            // Replace dots with underscores in synapse name if connector module name has dots
+            if (connector.getModuleName().contains(".")) {
+                synapseName = synapseName.replace(".", "_");
+            }
             
             // Handle duplicate names by appending numeric suffix
             String finalSynapseName = synapseName;

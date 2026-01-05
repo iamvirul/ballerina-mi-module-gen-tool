@@ -123,6 +123,8 @@ public class ConnectorSerializer {
         for (Connection connection : connector.getConnections()) {
             // TODO: revisit this
             if (connection.getInitComponent() != null) {
+                // Generate config JSON - filename sanitization is handled in generateFileForConnector
+                // Config files use exact connectionType (no PascalCase) to match connectionName
                 connection.getInitComponent().generateUIJson(connectorFolder, CONFIG_TEMPLATE_PATH,
                         connection.getConnectionType());
             }
@@ -309,15 +311,99 @@ public class ConnectorSerializer {
                 }
                 return "";
             }));
+            handlebar.registerHelper("sanitizeModuleName", ((context, options) -> {
+                if (context == null) {
+                    return "";
+                }
+                String moduleName = context.toString();
+                // Replace dots with underscores
+                return new Handlebars.SafeString(moduleName.replace(".", "_"));
+            }));
             String templateFileName = String.format("%s/%s.%s", templatePath, templateName, extension);
             String content = Utils.readFile(templateFileName);
             Template template = handlebar.compileInline(content);
             String output = template.apply(element);
-            String outputFileName = String.format("%s.%s", outputName, extension);
+            
+            // Sanitize filename: config files use exact connectionType (no sanitization),
+            // function files apply PascalCase conversion
+            boolean isConfigFile = templatePath.equals(CONFIG_TEMPLATE_PATH);
+            String outputFileName;
+            if (isConfigFile) {
+                // For config files, use the filename as-is (connectionType already has dots replaced)
+                // This ensures the filename matches connectionName exactly for UI lookup
+                // Extract just the filename part to avoid any path issues
+                int lastSeparator = Math.max(outputName.lastIndexOf('/'), outputName.lastIndexOf('\\'));
+                String filename = (lastSeparator >= 0) ? outputName.substring(lastSeparator + 1) : outputName;
+                outputFileName = String.format("%s.%s", filename, extension);
+                // Preserve directory path
+                if (lastSeparator >= 0) {
+                    String directory = outputName.substring(0, lastSeparator + 1);
+                    outputFileName = directory + outputFileName;
+                }
+            } else {
+                // For function files, apply full sanitization with PascalCase
+                String sanitizedOutputName = sanitizeFileName(outputName, false);
+                outputFileName = String.format("%s.%s", sanitizedOutputName, extension);
+            }
             Utils.writeFile(outputFileName, output);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Sanitize filename by replacing dots with underscores.
+     * Optionally converts to PascalCase for function files (not config files).
+     * Preserves the directory path structure.
+     * 
+     * @param filePath The full file path including directory and filename
+     * @param isConfigFile If true, only replace dots (no PascalCase). If false, also apply PascalCase.
+     * @return The sanitized file path
+     */
+    private static String sanitizeFileName(String filePath, boolean isConfigFile) {
+        if (filePath == null || filePath.isEmpty()) {
+            return filePath;
+        }
+        
+        // Extract the directory path and filename
+        int lastSeparatorIndex = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+        String filename;
+        String directory = "";
+        
+        if (lastSeparatorIndex < 0) {
+            // No directory path, just filename
+            filename = filePath;
+        } else {
+            // Split into directory and filename
+            directory = filePath.substring(0, lastSeparatorIndex + 1);
+            filename = filePath.substring(lastSeparatorIndex + 1);
+        }
+        
+        // Replace dots with underscores
+        String sanitizedFilename = filename.replace(".", "_");
+        
+        // Only apply PascalCase for function files, not config files
+        // Config files must match connectionType exactly for UI to find them
+        if (!isConfigFile) {
+            // Convert to PascalCase: split by underscore, capitalize each word except keep first word lowercase
+            // Example: zoom_meetings_Client -> zoom_Meetings_Client
+            String[] parts = sanitizedFilename.split("_");
+            if (parts.length > 0) {
+                StringBuilder pascalCase = new StringBuilder();
+                // Keep first part lowercase (module name)
+                pascalCase.append(parts[0].toLowerCase());
+                // Convert remaining parts to PascalCase
+                for (int i = 1; i < parts.length; i++) {
+                    if (!parts[i].isEmpty()) {
+                        pascalCase.append("_");
+                        pascalCase.append(StringUtils.capitalize(parts[i].toLowerCase()));
+                    }
+                }
+                sanitizedFilename = pascalCase.toString();
+            }
+        }
+        
+        return directory + sanitizedFilename;
     }
 
     private static void writeComponentXmlPathProperty(PathParamType parameter, int index, StringBuilder result, boolean isFirstPathParam) {
