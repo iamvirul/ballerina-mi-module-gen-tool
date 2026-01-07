@@ -22,6 +22,7 @@ import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.Template;
 import io.ballerina.mi.connectorModel.*;
 import io.ballerina.mi.connectorModel.attributeModel.Attribute;
+import io.ballerina.mi.connectorModel.attributeModel.AttributeGroup;
 import io.ballerina.mi.connectorModel.attributeModel.Combo;
 import io.ballerina.mi.util.Constants;
 import io.ballerina.mi.util.JsonTemplateBuilder;
@@ -232,13 +233,47 @@ public class ConnectorSerializer {
                 }
                 return new Handlebars.SafeString(result.toString());
             });
+            handlebar.registerHelper("writeConfigXmlParameters", (context, options) -> {
+                @SuppressWarnings("unchecked")
+                List<FunctionParam> functionParams = (List<FunctionParam>) context;
+                StringBuilder result = new StringBuilder();
+                boolean[] isFirst = {true};
+                for (FunctionParam functionParam : functionParams) {
+                    writeXmlParameterElements(functionParam, result, isFirst);
+                }
+                // Remove trailing newline and indentation
+                String output = result.toString();
+                if (output.endsWith("\n    ")) {
+                    output = output.substring(0, output.length() - 5);
+                }
+                return new Handlebars.SafeString(output);
+            });
+            handlebar.registerHelper("writeConfigXmlParamProperties", (context, options) -> {
+                Connection connection = (Connection) context;
+                StringBuilder result = new StringBuilder();
+                if (connection.getInitComponent() != null) {
+                    List<FunctionParam> functionParams = connection.getInitComponent().getFunctionParams();
+                    int[] indexHolder = {0};  // Use array to allow modification in lambda
+                    boolean[] isFirst = {true};
+                    for (FunctionParam functionParam : functionParams) {
+                        writeXmlParamProperties(functionParam, connection.getConnectionType().toUpperCase(), result, indexHolder, isFirst);
+                    }
+                }
+                // Remove trailing newline if present
+                String output = result.toString();
+                if (output.endsWith("\n")) {
+                    output = output.substring(0, output.length() - 1);
+                }
+                return new Handlebars.SafeString(output);
+            });
             handlebar.registerHelper("writeConfigJsonProperties", (context, options) -> {
                 Component component = (Component) context;
                 JsonTemplateBuilder builder = new JsonTemplateBuilder();
                 List<FunctionParam> functionParams = component.getFunctionParams();
                 for (FunctionParam functionParam : functionParams) {
+                    // Expand records for config (init) parameters
                     writeJsonAttributeForFunctionParam(functionParam, functionParams.indexOf(functionParam),
-                            functionParams.size(), builder, false);
+                            functionParams.size(), builder, false, true);
                 }
                 return new Handlebars.SafeString(builder.build());
             });
@@ -260,6 +295,10 @@ public class ConnectorSerializer {
 
                 // Then, add regular function parameters
                 List<FunctionParam> functionParams = component.getFunctionParams();
+                for (FunctionParam functionParam : functionParams) {
+                    // Do NOT expand records for regular function parameters
+                    writeJsonAttributeForFunctionParam(functionParam, functionParams.indexOf(functionParam),
+                            functionParams.size(), builder, false, false);
                 int totalFunctionParams = functionParams.size();
                 for (int i = 0; i < totalFunctionParams; i++) {
                     FunctionParam functionParam = functionParams.get(i);
@@ -507,11 +546,12 @@ public class ConnectorSerializer {
 
     private static void writeJsonAttributeForFunctionParam(FunctionParam functionParam, int index, int paramLength,
                                                            JsonTemplateBuilder builder,
-                                                           boolean isCombo) throws IOException {
+                                                           boolean isCombo, boolean expandRecords) throws IOException {
         String paramType = functionParam.getParamType();
         String paramValue = functionParam.getValue();
         String sanitizedParamName = Utils.sanitizeParamName(paramValue);
         String displayName = functionParam.getValue();
+        String defaultValue = functionParam.getDefaultValue() != null ? functionParam.getDefaultValue() : "";
         switch (paramType) {
             case STRING, XML, JSON, MAP, RECORD, ARRAY:
                 Attribute stringAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
@@ -520,23 +560,35 @@ public class ConnectorSerializer {
                 stringAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, stringAttr);
                 break;
+            case RECORD:
+                if (expandRecords) {
+                    writeRecordFields(functionParam, builder, expandRecords);
+                } else {
+                    // Treat as single stringOrExpression field for regular function params
+                    Attribute recordAttr = new Attribute(functionParam.getValue(), displayName,
+                            INPUT_TYPE_STRING_OR_EXPRESSION, defaultValue, functionParam.isRequired(),
+                            functionParam.getDescription(), "", "", isCombo);
+                    recordAttr.setEnableCondition(functionParam.getEnableCondition());
+                    builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, recordAttr);
+                }
+                break;
             case INT:
-                Attribute intAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
-                        "", functionParam.isRequired(), functionParam.getDescription(), VALIDATE_TYPE_REGEX,
+                Attribute intAttr = new Attribute(functionParam.getValue(), displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                        defaultValue, functionParam.isRequired(), functionParam.getDescription(), VALIDATE_TYPE_REGEX,
                         INTEGER_REGEX, isCombo);
                 intAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, intAttr);
                 break;
             case DECIMAL, FLOAT:
-                Attribute decAttr = new Attribute(sanitizedParamName, displayName,
-                        INPUT_TYPE_STRING_OR_EXPRESSION, "", functionParam.isRequired(),
+                Attribute decAttr = new Attribute(functionParam.getValue(), displayName,
+                        INPUT_TYPE_STRING_OR_EXPRESSION, defaultValue, functionParam.isRequired(),
                         functionParam.getDescription(), VALIDATE_TYPE_REGEX, DECIMAL_REGEX, isCombo);
                 decAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, decAttr);
                 break;
             case BOOLEAN:
-                Attribute boolAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_BOOLEAN,
-                        "", functionParam.isRequired(), functionParam.getDescription(), "",
+                Attribute boolAttr = new Attribute(functionParam.getValue(), displayName, INPUT_TYPE_BOOLEAN,
+                        defaultValue, functionParam.isRequired(), functionParam.getDescription(), "",
                         "", isCombo);
                 boolAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, boolAttr);
@@ -552,6 +604,11 @@ public class ConnectorSerializer {
                             functionParam.getDescription());
                     builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField).addSeparator(ATTRIBUTE_SEPARATOR);
                 }
+
+                // Add combo field for selecting the data type
+                Combo comboField = getComboField(unionParam, functionParam.getValue(),
+                        functionParam.getDescription());
+                builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField).addSeparator(ATTRIBUTE_SEPARATOR);
 
                 // Add attribute fields for each type with enable conditions
                 List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
@@ -612,9 +669,10 @@ public class ConnectorSerializer {
     private static Combo getComboField(UnionFunctionParam unionFunctionParam, String paramName, String helpTip) {
         List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
         StringJoiner unionJoiner = new StringJoiner(",", "[", "]");
-        for (FunctionParam member : unionMembers) {
+        for (int i = 0; i < unionMembers.size(); i++) {
+            FunctionParam member = unionMembers.get(i);
             String comboItem = member.getParamType().equals(RECORD) ?
-                    member.getTypeSymbol().getName().orElseThrow() : member.getParamType();
+                    member.getTypeSymbol().getName().orElse("Record" + i) : member.getParamType();
             unionJoiner.add("\"" + comboItem + "\"");
         }
         String unionComboValues = unionJoiner.toString();
@@ -625,6 +683,298 @@ public class ConnectorSerializer {
         String comboName = String.format("%s%s", sanitizedParamName, "DataType");
         return new Combo(comboName, comboName, INPUT_TYPE_COMBO, unionComboValues, defaultValue,
                 unionFunctionParam.isRequired(), unionFunctionParam.getEnableCondition(), helpTip);
+    }
+
+    /**
+     * Counts the total number of parameters after expanding record fields.
+     */
+    private static int countExpandedParams(List<FunctionParam> functionParams) {
+        int count = 0;
+        for (FunctionParam param : functionParams) {
+            if (param instanceof RecordFunctionParam recordParam && !recordParam.getRecordFieldParams().isEmpty()) {
+                count += countExpandedParams(recordParam.getRecordFieldParams());
+            } else {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * Writes XML property elements for function params, expanding record fields with proper indexing.
+     * For record parameters, writes the record parameter itself with type="record" and then
+     * writes the record fields with the record parameter name prefix.
+     */
+    private static void writeXmlParamProperties(FunctionParam functionParam, String connectionType,
+                                                 StringBuilder result, int[] indexHolder, boolean[] isFirst) {
+        if (functionParam instanceof RecordFunctionParam recordParam && !recordParam.getRecordFieldParams().isEmpty()) {
+            // First, write the record parameter itself with type="record"
+            if (!isFirst[0]) {
+                result.append("\n        ");
+            }
+            result.append(String.format("<property name=\"%s_param%d\" value=\"%s\"/>",
+                    connectionType, indexHolder[0], recordParam.getValue()));
+            result.append(String.format("\n        <property name=\"%s_paramType%d\" value=\"%s\"/>",
+                    connectionType, indexHolder[0], RECORD));
+            isFirst[0] = false;
+            int recordParamIndex = indexHolder[0];
+            indexHolder[0]++;
+            
+            // Then, write record fields with the record parameter name prefix
+            int[] fieldIndexHolder = {0};
+            String recordParamName = recordParam.getValue();
+            for (FunctionParam fieldParam : recordParam.getRecordFieldParams()) {
+                writeRecordFieldParamProperties(fieldParam, connectionType, recordParamName, result, fieldIndexHolder);
+            }
+        } else {
+            // Generate param and paramType properties for non-record parameters
+            if (!isFirst[0]) {
+                result.append("\n        ");
+            }
+            result.append(String.format("<property name=\"%s_param%d\" value=\"%s\"/>",
+                    connectionType, indexHolder[0], functionParam.getValue()));
+            result.append(String.format("\n        <property name=\"%s_paramType%d\" value=\"%s\"/>",
+                    connectionType, indexHolder[0], functionParam.getParamType()));
+            isFirst[0] = false;
+            indexHolder[0]++;
+        }
+    }
+
+    /**
+     * Writes XML property elements for record field parameters with the record parameter name prefix.
+     * This allows the runtime to identify which fields belong to which record parameter.
+     * Recursively expands nested records to their leaf fields.
+     */
+    private static void writeRecordFieldParamProperties(FunctionParam fieldParam, String connectionType,
+                                                        String recordParamName, StringBuilder result,
+                                                        int[] fieldIndexHolder) {
+        // If this is a nested record, recursively expand its fields
+        if (fieldParam instanceof RecordFunctionParam nestedRecordParam && !nestedRecordParam.getRecordFieldParams().isEmpty()) {
+            // Recursively expand nested record fields
+            for (FunctionParam nestedFieldParam : nestedRecordParam.getRecordFieldParams()) {
+                writeRecordFieldParamProperties(nestedFieldParam, connectionType, recordParamName, result, fieldIndexHolder);
+            }
+        } else {
+            // Write the leaf field with the record parameter name prefix
+            result.append("\n        ");
+            // Use pattern: {connectionType}_{recordParamName}_param{fieldIndex}
+            result.append(String.format("<property name=\"%s_%s_param%d\" value=\"%s\"/>",
+                    connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getValue()));
+            result.append(String.format("\n        <property name=\"%s_%s_paramType%d\" value=\"%s\"/>",
+                    connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getParamType()));
+            fieldIndexHolder[0]++;
+        }
+    }
+
+    /**
+     * Writes XML parameter elements for function params, expanding record fields as separate parameters.
+     */
+    private static void writeXmlParameterElements(FunctionParam functionParam, StringBuilder result, boolean[] isFirst) {
+        if (functionParam instanceof RecordFunctionParam recordParam && !recordParam.getRecordFieldParams().isEmpty()) {
+            // Expand record fields as separate parameters
+            for (FunctionParam fieldParam : recordParam.getRecordFieldParams()) {
+                writeXmlParameterElements(fieldParam, result, isFirst);
+            }
+        } else {
+            // Generate single parameter element
+            String description = functionParam.getDescription() != null ? functionParam.getDescription() : "";
+            if (!isFirst[0]) {
+                result.append("\n    ");
+            }
+            result.append(String.format("<parameter name=\"%s\" description=\"%s\"/>",
+                    functionParam.getValue(), escapeXml(description)));
+            isFirst[0] = false;
+        }
+    }
+
+    private static String escapeXml(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
+    /**
+     * Writes record fields as separate UI elements instead of a single opaque text field.
+     * Only used for config (init) parameters where expandRecords is true.
+     * If the param is a RecordFunctionParam with extracted fields, each field is rendered
+     * as its own input element. Nested record types are grouped into attributeGroups.
+     * Otherwise, falls back to a single stringOrExpression field.
+     */
+    private static void writeRecordFields(FunctionParam functionParam, JsonTemplateBuilder builder,
+                                          boolean expandRecords) throws IOException {
+        if (functionParam instanceof RecordFunctionParam recordParam && !recordParam.getRecordFieldParams().isEmpty()) {
+            List<FunctionParam> recordFields = recordParam.getRecordFieldParams();
+            
+            // Group fields by their immediate parent path segment for nested types
+            java.util.Map<String, java.util.List<FunctionParam>> groupedFields = new java.util.LinkedHashMap<>();
+            java.util.List<FunctionParam> topLevelFields = new java.util.ArrayList<>();
+            
+            for (FunctionParam fieldParam : recordFields) {
+                String fieldName = fieldParam.getValue();
+                String immediateParent = getImmediateParentSegment(fieldName);
+                
+                if (immediateParent != null && !immediateParent.isEmpty()) {
+                    // This is a nested field - group it
+                    groupedFields.computeIfAbsent(immediateParent, k -> new java.util.ArrayList<>()).add(fieldParam);
+                } else {
+                    // This is a top-level field (direct child of the record)
+                    topLevelFields.add(fieldParam);
+                }
+            }
+            
+            // Write top-level fields first (not grouped)
+            for (int i = 0; i < topLevelFields.size(); i++) {
+                FunctionParam fieldParam = topLevelFields.get(i);
+                writeJsonAttributeForFunctionParam(fieldParam, i, topLevelFields.size(), builder, false, expandRecords);
+            }
+            
+            // Write grouped nested fields
+            int groupIndex = 0;
+            int totalGroups = groupedFields.size();
+            for (java.util.Map.Entry<String, java.util.List<FunctionParam>> groupEntry : groupedFields.entrySet()) {
+                String groupName = groupEntry.getKey();
+                java.util.List<FunctionParam> groupFields = groupEntry.getValue();
+                
+                // Add separator before group if there were top-level fields or previous groups
+                if (!topLevelFields.isEmpty() || groupIndex > 0) {
+                    builder.addSeparator(ATTRIBUTE_SEPARATOR);
+                }
+                
+                // Create attributeGroup for this nested type with Title Case name
+                String displayGroupName = camelCaseToTitleCase(groupName);
+                AttributeGroup attributeGroup = new AttributeGroup(displayGroupName);
+                builder.addFromTemplate(ATTRIBUTE_GROUP_TEMPLATE_PATH, attributeGroup);
+
+                // Write fields within this group
+                // The attributeGroup template ends with "elements": [ and a newline
+                // Add proper indentation (18 spaces) to align with the attribute template's content indentation
+                for (int i = 0; i < groupFields.size(); i++) {
+                    FunctionParam fieldParam = groupFields.get(i);
+
+                    // Remove the group name prefix from the field name
+                    String originalFieldName = fieldParam.getValue();
+                    String shortFieldName = removeGroupPrefix(originalFieldName, groupName);
+
+                    // Temporarily modify the field name for display
+                    String savedFieldName = fieldParam.getValue();
+                    fieldParam.setValue(shortFieldName);
+
+                    // Add indentation before the first attribute in the group
+                    if (i == 0) {
+                        builder.addSeparator("                  ");  // 18 spaces to align with template content
+                    }
+                    writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords);
+
+                    // Restore original field name
+                    fieldParam.setValue(savedFieldName);
+                }
+                
+                // Close the attributeGroup - close elements array, value object, and attributeGroup object
+                // Match the indentation format from the expected output
+                builder.addSeparator("\n                    ]");
+                builder.addSeparator("\n                  }");
+                
+                // Close attributeGroup with comma if there are more groups, otherwise just close it
+                // The comma should be on the same line as the closing brace: },{
+                // The next attributeGroup template starts with {, so we get },{ on the same line
+                if (groupIndex < totalGroups - 1) {
+                    // Add closing brace and comma on same line, then newline
+                    builder.addSeparator("\n                },");
+                } else {
+                    builder.addSeparator("\n                }");
+                }
+                
+                groupIndex++;
+            }
+        } else {
+            // Fallback: treat as single stringOrExpression field if no field info available
+            Attribute recordAttr = new Attribute(functionParam.getValue(), functionParam.getValue(),
+                    INPUT_TYPE_STRING_OR_EXPRESSION, "", functionParam.isRequired(),
+                    functionParam.getDescription(), "", "", false);
+            recordAttr.setEnableCondition(functionParam.getEnableCondition());
+            builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, recordAttr);
+        }
+    }
+    
+    /**
+     * Converts camelCase or PascalCase string to Title Case with spaces.
+     * For example:
+     * - "authConfig" -> "Auth Config"
+     * - "credentialsConfig" -> "Credentials Config"
+     * - "http1Settings" -> "Http1 Settings"
+     *
+     * @param camelCase The camelCase string to convert
+     * @return The Title Case string with spaces
+     */
+    private static String camelCaseToTitleCase(String camelCase) {
+        if (camelCase == null || camelCase.isEmpty()) {
+            return camelCase;
+        }
+        // Insert space before uppercase letters (except at the start) and capitalize first letter
+        String result = camelCase.replaceAll("([a-z])([A-Z])", "$1 $2")
+                                  .replaceAll("([A-Z])([A-Z][a-z])", "$1 $2");
+        return StringUtils.capitalize(result);
+    }
+
+    /**
+     * Removes the group name prefix from a field name.
+     * For example:
+     * - "authConfig.token" with group "authConfig" -> "token"
+     * - "credentialsConfig.username" with group "credentialsConfig" -> "username"
+     *
+     * @param fieldName The full field name
+     * @param groupName The group name prefix to remove
+     * @return The field name without the group prefix
+     */
+    private static String removeGroupPrefix(String fieldName, String groupName) {
+        if (fieldName == null || groupName == null) {
+            return fieldName;
+        }
+        String prefix = groupName + ".";
+        if (fieldName.startsWith(prefix)) {
+            return fieldName.substring(prefix.length());
+        }
+        return fieldName;
+    }
+
+    /**
+     * Extracts the immediate parent segment from a qualified field name.
+     * For example:
+     * - "authConfig.token" -> "authConfig"
+     * - "credentialsConfig.username" -> "credentialsConfig"
+     * - "secureConfig.clientKeyPath" -> "secureConfig"
+     * - "idleTimeout" -> null (top-level field, no dots)
+     * - "http1Settings.proxy.host" -> "proxy"
+     *
+     * @param qualifiedName The qualified field name (e.g., "authConfig.token")
+     * @return The immediate parent segment, or null if it's a top-level field
+     */
+    private static String getImmediateParentSegment(String qualifiedName) {
+        if (qualifiedName == null || qualifiedName.isEmpty()) {
+            return null;
+        }
+
+        int lastDotIndex = qualifiedName.lastIndexOf('.');
+        if (lastDotIndex == -1) {
+            // No dots - this is a top-level field
+            return null;
+        }
+
+        // Get the part before the last dot
+        String beforeLastDot = qualifiedName.substring(0, lastDotIndex);
+
+        // Find the second-to-last dot to get the immediate parent
+        int secondLastDotIndex = beforeLastDot.lastIndexOf('.');
+        if (secondLastDotIndex == -1) {
+            // Only one dot - the parent is the first segment (this is a direct nested field)
+            return beforeLastDot;
+        }
+
+        // Extract the segment between the second-to-last and last dot
+        return beforeLastDot.substring(secondLastDotIndex + 1);
     }
 
     // Existing methods can now call the new generic method
