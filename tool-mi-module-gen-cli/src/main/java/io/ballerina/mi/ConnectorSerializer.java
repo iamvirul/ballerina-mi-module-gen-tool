@@ -124,6 +124,8 @@ public class ConnectorSerializer {
         for (Connection connection : connector.getConnections()) {
             // TODO: revisit this
             if (connection.getInitComponent() != null) {
+                // Generate config JSON - filename sanitization is handled in generateFileForConnector
+                // Config files use exact connectionType (no PascalCase) to match connectionName
                 connection.getInitComponent().generateUIJson(connectorFolder, CONFIG_TEMPLATE_PATH,
                         connection.getConnectionType());
             }
@@ -195,6 +197,10 @@ public class ConnectorSerializer {
                         .replace("\t", "\\t")
                         .replace("\u0000", "\\u0000");
             });
+            handlebar.registerHelper("sanitizeParamName", (context, options) -> {
+                if (context == null) return "";
+                return Utils.sanitizeParamName(context.toString());
+            });
             handlebar.registerHelper("checkFuncType", (context, options) -> {
                 FunctionType functionType = (FunctionType) context;
                 return functionType.toString().equals(options.param(0));
@@ -211,16 +217,18 @@ public class ConnectorSerializer {
             handlebar.registerHelper("writeComponentXmlProperties", (context, options) -> {
                 Component component = (Component) context;
                 StringBuilder result = new StringBuilder();
+                // Write path parameters first (pathParam0, pathParam1, etc.)
+                List<PathParamType> pathParams = component.getPathParams();
+                for (int i = 0; i < pathParams.size(); i++) {
+                    writeComponentXmlPathProperty(pathParams.get(i), i, result, i == 0);
+                }
+                // Then write query parameters (queryParam0, queryParam1, etc.)
                 List<Type> queryParams = component.getQueryParams();
                 for (int i = 0; i < queryParams.size(); i++) {
                     writeComponentXmlQueryProperty(queryParams.get(i), i, result);
                 }
-                List<PathParamType> pathParams = component.getPathParams();
-                for (int i = 0; i < pathParams.size(); i++) {
-                    writeComponentXmlPathProperty(pathParams.get(i), i, result);
-                }
                 if (templatePath.equals(FUNCTION_TEMPLATE_PATH)) {
-                    result.append(String.format("<property name=\"returnType\" value=\"%s\"/>\n",
+                    result.append(String.format("        <property name=\"returnType\" value=\"%s\"/>\n",
                             component.getReturnType()));
                 }
                 return new Handlebars.SafeString(result.toString());
@@ -272,11 +280,29 @@ public class ConnectorSerializer {
             handlebar.registerHelper("writeComponentJsonProperties", (context, options) -> {
                 Component component = (Component) context;
                 JsonTemplateBuilder builder = new JsonTemplateBuilder();
+
+                // First, add path parameters as input elements
+                List<PathParamType> pathParams = component.getPathParams();
+                int totalPathParams = pathParams.size();
+                for (int i = 0; i < totalPathParams; i++) {
+                    PathParamType pathParam = pathParams.get(i);
+                    writeJsonAttributeForPathParam(pathParam, i, totalPathParams, builder);
+                    // Add separator if not the last path param or if there are function params
+                    if (i < totalPathParams - 1 || !component.getFunctionParams().isEmpty()) {
+                        builder.addSeparator(ATTRIBUTE_SEPARATOR);
+                    }
+                }
+
+                // Then, add regular function parameters
                 List<FunctionParam> functionParams = component.getFunctionParams();
                 for (FunctionParam functionParam : functionParams) {
                     // Do NOT expand records for regular function parameters
                     writeJsonAttributeForFunctionParam(functionParam, functionParams.indexOf(functionParam),
                             functionParams.size(), builder, false, false);
+                int totalFunctionParams = functionParams.size();
+                for (int i = 0; i < totalFunctionParams; i++) {
+                    FunctionParam functionParam = functionParams.get(i);
+                    writeJsonAttributeForFunctionParam(functionParam, i, totalFunctionParams, builder, false);
                 }
                 return new Handlebars.SafeString(builder.build());
             });
@@ -324,20 +350,111 @@ public class ConnectorSerializer {
                 }
                 return "";
             }));
+            handlebar.registerHelper("sanitizeModuleName", ((context, options) -> {
+                if (context == null) {
+                    return "";
+                }
+                String moduleName = context.toString();
+                // Replace dots with underscores
+                return new Handlebars.SafeString(moduleName.replace(".", "_"));
+            }));
             String templateFileName = String.format("%s/%s.%s", templatePath, templateName, extension);
             String content = Utils.readFile(templateFileName);
             Template template = handlebar.compileInline(content);
             String output = template.apply(element);
-            String outputFileName = String.format("%s.%s", outputName, extension);
+            
+            // Sanitize filename: config files use exact connectionType (no sanitization),
+            // function files apply PascalCase conversion
+            boolean isConfigFile = templatePath.equals(CONFIG_TEMPLATE_PATH);
+            String outputFileName;
+            if (isConfigFile) {
+                // For config files, use the filename as-is (connectionType already has dots replaced)
+                // This ensures the filename matches connectionName exactly for UI lookup
+                // Extract just the filename part to avoid any path issues
+                int lastSeparator = Math.max(outputName.lastIndexOf('/'), outputName.lastIndexOf('\\'));
+                String filename = (lastSeparator >= 0) ? outputName.substring(lastSeparator + 1) : outputName;
+                outputFileName = String.format("%s.%s", filename, extension);
+                // Preserve directory path
+                if (lastSeparator >= 0) {
+                    String directory = outputName.substring(0, lastSeparator + 1);
+                    outputFileName = directory + outputFileName;
+                }
+            } else {
+                // For function files, apply full sanitization with PascalCase
+                String sanitizedOutputName = sanitizeFileName(outputName, false);
+                outputFileName = String.format("%s.%s", sanitizedOutputName, extension);
+            }
             Utils.writeFile(outputFileName, output);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static void writeComponentXmlPathProperty(PathParamType parameter, int index, StringBuilder result) {
-        result.append(String.format("<property name=\"pathParam%d\" value=\"%s\"/>\n", index, parameter.name));
-        result.append(String.format("<property name=\"pathParamType%d\" value=\"%s\"/>\n", index, parameter.typeName));
+    /**
+     * Sanitize filename by replacing dots with underscores.
+     * Optionally converts to PascalCase for function files (not config files).
+     * Preserves the directory path structure.
+     * 
+     * @param filePath The full file path including directory and filename
+     * @param isConfigFile If true, only replace dots (no PascalCase). If false, also apply PascalCase.
+     * @return The sanitized file path
+     */
+    private static String sanitizeFileName(String filePath, boolean isConfigFile) {
+        if (filePath == null || filePath.isEmpty()) {
+            return filePath;
+        }
+        
+        // Extract the directory path and filename
+        int lastSeparatorIndex = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+        String filename;
+        String directory = "";
+        
+        if (lastSeparatorIndex < 0) {
+            // No directory path, just filename
+            filename = filePath;
+        } else {
+            // Split into directory and filename
+            directory = filePath.substring(0, lastSeparatorIndex + 1);
+            filename = filePath.substring(lastSeparatorIndex + 1);
+        }
+        
+        // Replace dots with underscores
+        String sanitizedFilename = filename.replace(".", "_");
+        
+        // Only apply PascalCase for function files, not config files
+        // Config files must match connectionType exactly for UI to find them
+        if (!isConfigFile) {
+            // Convert to PascalCase: split by underscore, capitalize each word except keep first word lowercase
+            // Example: zoom_meetings_Client -> zoom_Meetings_Client
+            String[] parts = sanitizedFilename.split("_");
+            if (parts.length > 0) {
+                StringBuilder pascalCase = new StringBuilder();
+                // Keep first part lowercase (module name)
+                pascalCase.append(parts[0].toLowerCase());
+                // Convert remaining parts to PascalCase
+                for (int i = 1; i < parts.length; i++) {
+                    if (!parts[i].isEmpty()) {
+                        pascalCase.append("_");
+                        pascalCase.append(StringUtils.capitalize(parts[i].toLowerCase()));
+                    }
+                }
+                sanitizedFilename = pascalCase.toString();
+            }
+        }
+        
+        return directory + sanitizedFilename;
+    }
+
+    private static void writeComponentXmlPathProperty(PathParamType parameter, int index, StringBuilder result, boolean isFirstPathParam) {
+        // Handlebars adds 8 spaces indentation only to the first line of helper output
+        // So the first pathParam line doesn't need indentation, but all subsequent lines do
+        if (isFirstPathParam) {
+            result.append(String.format("<property name=\"pathParam%d\" value=\"%s\"/>\n", index, parameter.name));
+        } else {
+            result.append(String.format("        <property name=\"pathParam%d\" value=\"%s\"/>\n", index, parameter.name));
+        }
+        // All pathParamType lines need indentation (they're not the first line)
+        result.append(String.format("        <property name=\"pathParamType%d\" value=\"%s\"/>\n", index, parameter.typeName));
     }
 
     private static void writeComponentXmlQueryProperty(Type parameter, int index, StringBuilder result) {
@@ -431,12 +548,14 @@ public class ConnectorSerializer {
                                                            JsonTemplateBuilder builder,
                                                            boolean isCombo, boolean expandRecords) throws IOException {
         String paramType = functionParam.getParamType();
+        String paramValue = functionParam.getValue();
+        String sanitizedParamName = Utils.sanitizeParamName(paramValue);
         String displayName = functionParam.getValue();
         String defaultValue = functionParam.getDefaultValue() != null ? functionParam.getDefaultValue() : "";
         switch (paramType) {
-            case STRING, XML, JSON, MAP, ARRAY:
-                Attribute stringAttr = new Attribute(functionParam.getValue(), displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
-                        defaultValue, functionParam.isRequired(), functionParam.getDescription(), "",
+            case STRING, XML, JSON, MAP, RECORD, ARRAY:
+                Attribute stringAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                        "", functionParam.isRequired(), functionParam.getDescription(), "",
                         "", isCombo);
                 stringAttr.setEnableCondition(functionParam.getEnableCondition());
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, stringAttr);
@@ -475,14 +594,15 @@ public class ConnectorSerializer {
                 builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, boolAttr);
                 break;
             case UNION:
-                if (!(functionParam instanceof UnionFunctionParam unionParam)) {
-                    throw new IllegalStateException("Union parameter must be modelled as UnionFunctionParam");
+                // Ensure the functionParam is actually a UnionFunctionParam instance
+                if (!(functionParam instanceof UnionFunctionParam unionFunctionParam)) {
+                    throw new IllegalArgumentException("FunctionParam with paramType 'union' must be an instance of UnionFunctionParam for parameter: " + functionParam.getValue());
                 }
-
-                List<FunctionParam> unionMembers = unionParam.getUnionMemberParams();
-                if (unionMembers.isEmpty()) {
-                    // Empty union (all members are nil or unsupported) - skip entirely
-                    return;
+                // Gather the data types in the union
+                if (!unionFunctionParam.getUnionMemberParams().isEmpty()) {
+                    Combo comboField = getComboField(unionFunctionParam, functionParam.getValue(),
+                            functionParam.getDescription());
+                    builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField).addSeparator(ATTRIBUTE_SEPARATOR);
                 }
 
                 // Add combo field for selecting the data type
@@ -491,16 +611,59 @@ public class ConnectorSerializer {
                 builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField).addSeparator(ATTRIBUTE_SEPARATOR);
 
                 // Add attribute fields for each type with enable conditions
-                for (int i = 0; i < unionMembers.size(); i++) {
-                    FunctionParam member = unionMembers.get(i);
-                    // Pass member's position within union to correctly handle separators
-                    writeJsonAttributeForFunctionParam(member, i, unionMembers.size(), builder, false, expandRecords);
+                List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
+                for (FunctionParam member : unionMembers) {
+                    writeJsonAttributeForFunctionParam(member, index, paramLength, builder, false);
+                    builder.addConditionalSeparator((unionMembers.indexOf(member) < unionMembers.size() - 1),
+                            ATTRIBUTE_SEPARATOR);
                 }
                 break;
             default:
                 throw new IllegalArgumentException("Unsupported parameter type '" + paramType + "' for parameter: " + functionParam.getValue());
         }
         builder.addConditionalSeparator((index < paramLength - 1), ATTRIBUTE_SEPARATOR);
+    }
+
+    /**
+     * Write JSON attribute for a path parameter.
+     * Path parameters are converted to input elements in the UI schema.
+     */
+    private static void writeJsonAttributeForPathParam(PathParamType pathParam, int index, int paramLength,
+                                                      JsonTemplateBuilder builder) throws IOException {
+        String paramType = pathParam.typeName;
+        String sanitizedParamName = Utils.sanitizeParamName(pathParam.name);
+        String displayName = pathParam.name;
+        String description = ""; // PathParamType doesn't have documentation field
+        
+        switch (paramType) {
+            case STRING, XML, JSON, MAP, RECORD, ARRAY:
+                Attribute stringAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                        "", true, description, "", "", false);
+                builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, stringAttr);
+                break;
+            case INT:
+                Attribute intAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                        "", true, description, VALIDATE_TYPE_REGEX, INTEGER_REGEX, false);
+                builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, intAttr);
+                break;
+            case DECIMAL, FLOAT:
+                Attribute decAttr = new Attribute(sanitizedParamName, displayName,
+                        INPUT_TYPE_STRING_OR_EXPRESSION, "", true, description, 
+                        VALIDATE_TYPE_REGEX, DECIMAL_REGEX, false);
+                builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, decAttr);
+                break;
+            case BOOLEAN:
+                Attribute boolAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_BOOLEAN,
+                        "", true, description, "", "", false);
+                builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, boolAttr);
+                break;
+            default:
+                // Default to string for unknown types
+                Attribute defaultAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
+                        "", true, description, "", "", false);
+                builder.addFromTemplate(ATTRIBUTE_TEMPLATE_PATH, defaultAttr);
+                break;
+        }
     }
 
     private static Combo getComboField(UnionFunctionParam unionFunctionParam, String paramName, String helpTip) {
@@ -513,11 +676,11 @@ public class ConnectorSerializer {
             unionJoiner.add("\"" + comboItem + "\"");
         }
         String unionComboValues = unionJoiner.toString();
-        FunctionParam firstMember = unionMembers.getFirst();
-        String defaultValue = firstMember.getParamType().equals(RECORD) ?
-                firstMember.getTypeSymbol().getName().orElse("Record0") : firstMember.getParamType();
-        // Combo field for selecting the data type
-        String comboName = String.format("%s%s", paramName, "DataType");
+        String defaultValue = unionMembers.getFirst().getParamType().equals(RECORD) ?
+                unionMembers.getFirst().getTypeSymbol().getName().orElseThrow() : unionMembers.getFirst().getParamType();
+        // Combo field for selecting the data type - sanitize the parameter name
+        String sanitizedParamName = Utils.sanitizeParamName(paramName);
+        String comboName = String.format("%s%s", sanitizedParamName, "DataType");
         return new Combo(comboName, comboName, INPUT_TYPE_COMBO, unionComboValues, defaultValue,
                 unionFunctionParam.isRequired(), unionFunctionParam.getEnableCondition(), helpTip);
     }
