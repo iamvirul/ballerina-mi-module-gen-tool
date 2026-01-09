@@ -32,7 +32,7 @@
                     "name": "serviceUrl",
                     "displayName": "serviceUrl",
                     "inputType": "stringOrExpression",
-                    "defaultValue": "https://test.sh",
+                    "defaultValue": "",
                     "required": "false",
                     "helpTip": "",
                     "validateType": "",

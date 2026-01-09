@@ -1,7 +1,7 @@
 {
   "connectorName": "unionProject",
   "operationName": "processNullableString",
-  "title": "processNullableString",
+  "title": "process nullable string",
   "help": "",
   "elements": [
     {
@@ -40,8 +40,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "valueString",

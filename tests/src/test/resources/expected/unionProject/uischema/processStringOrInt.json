@@ -1,7 +1,7 @@
 {
   "connectorName": "unionProject",
   "operationName": "processStringOrInt",
-  "title": "processStringOrInt",
+  "title": "process string or int",
   "help": "",
   "elements": [
     {
@@ -40,8 +40,7 @@
                     "required": "true",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "valueString",

@@ -229,8 +229,12 @@ public class ConnectorSerializer {
                     writeComponentXmlQueryProperty(queryParams.get(i), i, result);
                 }
                 if (templatePath.equals(FUNCTION_TEMPLATE_PATH)) {
-                    result.append(String.format("        <property name=\"returnType\" value=\"%s\"/>\n",
-                            component.getReturnType()));
+                    // Only add indentation if there are already properties written
+                    // (Handlebars adds indentation to the first line automatically)
+                    boolean hasPreviousProperties = !pathParams.isEmpty() || !queryParams.isEmpty();
+                    String indent = hasPreviousProperties ? "        " : "";
+                    result.append(String.format("%s<property name=\"returnType\" value=\"%s\"/>\n",
+                            indent, component.getReturnType()));
                 }
                 return new Handlebars.SafeString(result.toString());
             });
@@ -260,10 +264,10 @@ public class ConnectorSerializer {
                         writeXmlParamProperties(functionParam, connection.getConnectionType().toUpperCase(), result, indexHolder, isFirst);
                     }
                 }
-                // Remove trailing newline if present
+                // Ensure output ends with a newline for proper formatting
                 String output = result.toString();
-                if (output.endsWith("\n")) {
-                    output = output.substring(0, output.length() - 1);
+                if (!output.isEmpty() && !output.endsWith("\n")) {
+                    output = output + "\n";
                 }
                 return new Handlebars.SafeString(output);
             });
