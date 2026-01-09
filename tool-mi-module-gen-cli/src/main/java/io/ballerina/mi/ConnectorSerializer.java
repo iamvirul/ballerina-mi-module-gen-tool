@@ -278,7 +278,7 @@ public class ConnectorSerializer {
                 for (FunctionParam functionParam : functionParams) {
                     // Expand records for config (init) parameters
                     writeJsonAttributeForFunctionParam(functionParam, functionParams.indexOf(functionParam),
-                            functionParams.size(), builder, false, true);
+                            functionParams.size(), builder, false, true, null);
                 }
                 return new Handlebars.SafeString(builder.build());
             });
@@ -303,7 +303,7 @@ public class ConnectorSerializer {
                 for (FunctionParam functionParam : functionParams) {
                     // Do NOT expand records for regular function parameters
                     writeJsonAttributeForFunctionParam(functionParam, functionParams.indexOf(functionParam),
-                            functionParams.size(), builder, false, false);
+                            functionParams.size(), builder, false, false, null);
                 }
                 return new Handlebars.SafeString(builder.build());
             });
@@ -553,10 +553,23 @@ public class ConnectorSerializer {
     private static void writeJsonAttributeForFunctionParam(FunctionParam functionParam, int index, int paramLength,
                                                            JsonTemplateBuilder builder,
                                                            boolean isCombo, boolean expandRecords) throws IOException {
+        writeJsonAttributeForFunctionParam(functionParam, index, paramLength, builder, isCombo, expandRecords, null);
+    }
+
+    private static void writeJsonAttributeForFunctionParam(FunctionParam functionParam, int index, int paramLength,
+                                                           JsonTemplateBuilder builder,
+                                                           boolean isCombo, boolean expandRecords, String groupName) throws IOException {
         String paramType = functionParam.getParamType();
         String paramValue = functionParam.getValue();
         String sanitizedParamName = Utils.sanitizeParamName(paramValue);
+        // For display, remove group prefix if we're in a group context
+        // For nested fields like "http1Settings.proxy.host" in "Proxy" group, 
+        // remove everything up to and including the group name segment
         String displayName = functionParam.getValue();
+        if (groupName != null && !groupName.isEmpty() && displayName != null) {
+            // Use removeGroupPrefix which handles both direct children and nested groups
+            displayName = removeGroupPrefix(displayName, groupName);
+        }
         String defaultValue = functionParam.getDefaultValue() != null ? functionParam.getDefaultValue() : "";
         switch (paramType) {
             case STRING, XML, JSON, MAP, ARRAY:
@@ -606,8 +619,17 @@ public class ConnectorSerializer {
                 }
                 // Gather the data types in the union
                 if (!unionFunctionParam.getUnionMemberParams().isEmpty()) {
+                    // If groupName is not provided but we're in a group context, detect it from the field path
+                    String effectiveGroupName = groupName;
+                    if (effectiveGroupName == null && paramValue != null && paramValue.contains(".")) {
+                        String immediateParent = getImmediateParentSegment(paramValue);
+                        if (immediateParent != null) {
+                            effectiveGroupName = immediateParent;
+                        }
+                    }
+                    
                     Combo comboField = getComboField(unionFunctionParam, functionParam.getValue(),
-                            functionParam.getDescription());
+                            functionParam.getDescription(), effectiveGroupName);
                     builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField);
 
                     // Add attribute fields for each type with enable conditions
@@ -615,7 +637,7 @@ public class ConnectorSerializer {
                     List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
                     List<FunctionParam> validMembers = new ArrayList<>();
                     for (FunctionParam member : unionMembers) {
-                        // Skip nested unions that have no members (they would produce no output)
+                        // Skip nested unions that have no members (would produce no output)
                         if (member instanceof UnionFunctionParam nestedUnion && nestedUnion.getUnionMemberParams().isEmpty()) {
                             continue;
                         }
@@ -628,7 +650,8 @@ public class ConnectorSerializer {
                     }
 
                     for (int i = 0; i < validMembers.size(); i++) {
-                        writeJsonAttributeForFunctionParam(validMembers.get(i), index, paramLength, builder, true, false);
+                        // Pass group name context for union members to remove prefix from displayName
+                        writeJsonAttributeForFunctionParam(validMembers.get(i), index, paramLength, builder, true, false, effectiveGroupName);
                         if (i < validMembers.size() - 1) {
                             builder.addSeparator(ATTRIBUTE_SEPARATOR);
                         }
@@ -686,7 +709,7 @@ public class ConnectorSerializer {
         }
     }
 
-    private static Combo getComboField(UnionFunctionParam unionFunctionParam, String paramName, String helpTip) {
+    private static Combo getComboField(UnionFunctionParam unionFunctionParam, String paramName, String helpTip, String groupName) {
         List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
         StringJoiner unionJoiner = new StringJoiner(",", "[", "]");
         for (int i = 0; i < unionMembers.size(); i++) {
@@ -714,9 +737,19 @@ public class ConnectorSerializer {
             defaultValue = firstMember.getParamType();
         }
         // Combo field for selecting the data type - sanitize the parameter name
+        // Keep full qualified name for the combo name (for enable conditions matching)
         String sanitizedParamName = Utils.sanitizeParamName(paramName);
         String comboName = String.format("%s%s", sanitizedParamName, "DataType");
-        return new Combo(comboName, comboName, INPUT_TYPE_COMBO, unionComboValues, defaultValue,
+        
+        // For displayName, remove group prefix if in a group context
+        String comboDisplayName = comboName;
+        if (groupName != null && !groupName.isEmpty() && paramName != null) {
+            // Remove group prefix from paramName first, then add "DataType"
+            String displayParamName = removeGroupPrefix(paramName, groupName);
+            comboDisplayName = String.format("%s%s", Utils.sanitizeParamName(displayParamName), "DataType");
+        }
+        
+        return new Combo(comboName, comboDisplayName, INPUT_TYPE_COMBO, unionComboValues, defaultValue,
                 unionFunctionParam.isRequired(), unionFunctionParam.getEnableCondition(), helpTip);
     }
 
@@ -779,6 +812,9 @@ public class ConnectorSerializer {
      * Writes XML property elements for record field parameters with the record parameter name prefix.
      * This allows the runtime to identify which fields belong to which record parameter.
      * Recursively expands nested records to their leaf fields.
+     * IMPORTANT: Keep the full qualified field path (e.g., "http1Settings.proxy.host") in the value
+     * so the runtime can reconstruct the nested record structure. Only remove the prefix for UI display
+     * in JSON schema, not in XML properties.
      */
     private static void writeRecordFieldParamProperties(FunctionParam fieldParam, String connectionType,
                                                         String recordParamName, StringBuilder result,
@@ -792,13 +828,16 @@ public class ConnectorSerializer {
         } else if (fieldParam instanceof UnionFunctionParam unionFieldParam) {
             // Write the union field with the record parameter name prefix
             result.append("\n        ");
+            // Keep full qualified path for runtime reconstruction (e.g., "http1Settings.proxy.host")
+            String fieldValue = fieldParam.getValue();
             // Use pattern: {connectionType}_{recordParamName}_param{fieldIndex}
             result.append(String.format("<property name=\"%s_%s_param%d\" value=\"%s\"/>",
-                    connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getValue()));
+                    connectionType, recordParamName, fieldIndexHolder[0], fieldValue));
             result.append(String.format("\n        <property name=\"%s_%s_paramType%d\" value=\"%s\"/>",
                     connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getParamType()));
             // Add dataType property for union type selector - use sanitized param name to match combo field
-            String sanitizedParamName = Utils.sanitizeParamName(fieldParam.getValue());
+            // Use full qualified path for the dataType property name to ensure it matches enable conditions
+            String sanitizedParamName = Utils.sanitizeParamName(fieldValue);
             result.append(String.format("\n        <property name=\"%s_%s_dataType%d\" value=\"%s\"/>",
                     connectionType, recordParamName, fieldIndexHolder[0],
                     String.format("%s_%s", sanitizedParamName, "DataType")));
@@ -806,9 +845,11 @@ public class ConnectorSerializer {
         } else {
             // Write the leaf field with the record parameter name prefix
             result.append("\n        ");
+            // Keep full qualified path for runtime reconstruction (e.g., "http1Settings.proxy.host")
+            String fieldValue = fieldParam.getValue();
             // Use pattern: {connectionType}_{recordParamName}_param{fieldIndex}
             result.append(String.format("<property name=\"%s_%s_param%d\" value=\"%s\"/>",
-                    connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getValue()));
+                    connectionType, recordParamName, fieldIndexHolder[0], fieldValue));
             result.append(String.format("\n        <property name=\"%s_%s_paramType%d\" value=\"%s\"/>",
                     connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getParamType()));
             fieldIndexHolder[0]++;
@@ -877,7 +918,7 @@ public class ConnectorSerializer {
             // Write top-level fields first (not grouped)
             for (int i = 0; i < topLevelFields.size(); i++) {
                 FunctionParam fieldParam = topLevelFields.get(i);
-                writeJsonAttributeForFunctionParam(fieldParam, i, topLevelFields.size(), builder, false, expandRecords);
+                writeJsonAttributeForFunctionParam(fieldParam, i, topLevelFields.size(), builder, false, expandRecords, null);
             }
             
             // Write grouped nested fields
@@ -920,7 +961,8 @@ public class ConnectorSerializer {
                     if (i == 0) {
                         builder.addSeparator("                  ");  // 18 spaces to align with template content
                     }
-                    writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords);
+                    // Pass groupName for union members to remove prefix from displayName
+                    writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords, isUnion ? groupName : null);
 
                     // Restore original field name
                     if (!isUnion) {
@@ -977,12 +1019,15 @@ public class ConnectorSerializer {
 
     /**
      * Removes the group name prefix from a field name.
+     * For nested fields, finds the group name segment in the path and removes everything up to and including it.
      * For example:
      * - "authConfig.token" with group "authConfig" -> "token"
      * - "credentialsConfig.username" with group "credentialsConfig" -> "username"
+     * - "http1Settings.proxy.host" with group "proxy" -> "host"
+     * - "http1Settings.keepAlive" with group "http1Settings" -> "keepAlive"
      *
      * @param fieldName The full field name
-     * @param groupName The group name prefix to remove
+     * @param groupName The group name to remove (can be anywhere in the path)
      * @return The field name without the group prefix
      */
     private static String removeGroupPrefix(String fieldName, String groupName) {
@@ -990,9 +1035,22 @@ public class ConnectorSerializer {
             return fieldName;
         }
         String prefix = groupName + ".";
+        
+        // Check if field starts with group prefix (direct child)
         if (fieldName.startsWith(prefix)) {
             return fieldName.substring(prefix.length());
         }
+        
+        // Check if group name appears as a segment in the path (nested group)
+        // e.g., "http1Settings.proxy.host" contains ".proxy." when group is "proxy"
+        String groupSegment = "." + prefix;
+        int groupIndex = fieldName.indexOf(groupSegment);
+        if (groupIndex >= 0) {
+            // Remove everything up to and including the group segment
+            return fieldName.substring(groupIndex + groupSegment.length());
+        }
+        
+        // Group name not found in the path, return as-is
         return fieldName;
     }
 
