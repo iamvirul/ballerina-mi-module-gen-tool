@@ -47,7 +47,7 @@ import java.util.zip.ZipInputStream;
  * <p>
  * The test suite supports two types of projects:
  * <ul>
- *   <li><b>Build Projects</b> (project1, project2, project3): Regular Ballerina projects with
+ *   <li><b>Build Projects</b> (project1, project2, project3, project6): Regular Ballerina projects with
  *       {@code @mi:Operation} annotated functions. Use {@code miProjectDataProvider()}.</li>
  *   <li><b>Bala Projects</b> (project4): Ballerina connector projects that need to be packed
  *       into .bala files first. Use {@code balaProjectDataProvider()}.</li>
@@ -83,6 +83,7 @@ public class ConnectorZipValidationTest {
                 {"project1"},
                 {"project2"},
                 {"project3"},
+                {"project6"},
         };
     }
 

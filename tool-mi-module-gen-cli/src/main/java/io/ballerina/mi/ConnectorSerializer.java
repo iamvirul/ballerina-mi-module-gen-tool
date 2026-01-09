@@ -42,6 +42,7 @@ import java.io.PrintStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.*;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -299,10 +300,6 @@ public class ConnectorSerializer {
                     // Do NOT expand records for regular function parameters
                     writeJsonAttributeForFunctionParam(functionParam, functionParams.indexOf(functionParam),
                             functionParams.size(), builder, false, false);
-                int totalFunctionParams = functionParams.size();
-                for (int i = 0; i < totalFunctionParams; i++) {
-                    FunctionParam functionParam = functionParams.get(i);
-                    writeJsonAttributeForFunctionParam(functionParam, i, totalFunctionParams, builder, false);
                 }
                 return new Handlebars.SafeString(builder.build());
             });
@@ -424,22 +421,27 @@ public class ConnectorSerializer {
         // Only apply PascalCase for function files, not config files
         // Config files must match connectionType exactly for UI to find them
         if (!isConfigFile) {
-            // Convert to PascalCase: split by underscore, capitalize each word except keep first word lowercase
-            // Example: zoom_meetings_Client -> zoom_Meetings_Client
-            String[] parts = sanitizedFilename.split("_");
-            if (parts.length > 0) {
-                StringBuilder pascalCase = new StringBuilder();
-                // Keep first part lowercase (module name)
-                pascalCase.append(parts[0].toLowerCase());
-                // Convert remaining parts to PascalCase
-                for (int i = 1; i < parts.length; i++) {
-                    if (!parts[i].isEmpty()) {
-                        pascalCase.append("_");
-                        pascalCase.append(StringUtils.capitalize(parts[i].toLowerCase()));
+            // If the filename doesn't contain underscores, preserve it as-is (likely already camelCase)
+            // Only apply transformation if there are underscores (module names with dots converted to underscores)
+            if (sanitizedFilename.contains("_")) {
+                // Convert to PascalCase: split by underscore, capitalize each word except keep first word lowercase
+                // Example: zoom_meetings_Client -> zoom_Meetings_Client
+                String[] parts = sanitizedFilename.split("_");
+                if (parts.length > 0) {
+                    StringBuilder pascalCase = new StringBuilder();
+                    // Keep first part lowercase (module name)
+                    pascalCase.append(parts[0].toLowerCase());
+                    // Convert remaining parts to PascalCase
+                    for (int i = 1; i < parts.length; i++) {
+                        if (!parts[i].isEmpty()) {
+                            pascalCase.append("_");
+                            pascalCase.append(StringUtils.capitalize(parts[i].toLowerCase()));
+                        }
                     }
+                    sanitizedFilename = pascalCase.toString();
                 }
-                sanitizedFilename = pascalCase.toString();
             }
+            // If no underscores, preserve the original camelCase (e.g., "processStringOrInt" stays as-is)
         }
         
         return directory + sanitizedFilename;
@@ -553,7 +555,7 @@ public class ConnectorSerializer {
         String displayName = functionParam.getValue();
         String defaultValue = functionParam.getDefaultValue() != null ? functionParam.getDefaultValue() : "";
         switch (paramType) {
-            case STRING, XML, JSON, MAP, RECORD, ARRAY:
+            case STRING, XML, JSON, MAP, ARRAY:
                 Attribute stringAttr = new Attribute(sanitizedParamName, displayName, INPUT_TYPE_STRING_OR_EXPRESSION,
                         "", functionParam.isRequired(), functionParam.getDescription(), "",
                         "", isCombo);
@@ -602,26 +604,40 @@ public class ConnectorSerializer {
                 if (!unionFunctionParam.getUnionMemberParams().isEmpty()) {
                     Combo comboField = getComboField(unionFunctionParam, functionParam.getValue(),
                             functionParam.getDescription());
-                    builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField).addSeparator(ATTRIBUTE_SEPARATOR);
-                }
+                    builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField);
 
-                // Add combo field for selecting the data type
-                Combo comboField = getComboField(unionParam, functionParam.getValue(),
-                        functionParam.getDescription());
-                builder.addFromTemplate(COMBO_TEMPLATE_PATH, comboField).addSeparator(ATTRIBUTE_SEPARATOR);
+                    // Add attribute fields for each type with enable conditions
+                    // Filter out union members that are themselves empty unions (would produce no output)
+                    List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
+                    List<FunctionParam> validMembers = new ArrayList<>();
+                    for (FunctionParam member : unionMembers) {
+                        // Skip nested unions that have no members (they would produce no output)
+                        if (member instanceof UnionFunctionParam nestedUnion && nestedUnion.getUnionMemberParams().isEmpty()) {
+                            continue;
+                        }
+                        validMembers.add(member);
+                    }
 
-                // Add attribute fields for each type with enable conditions
-                List<FunctionParam> unionMembers = unionFunctionParam.getUnionMemberParams();
-                for (FunctionParam member : unionMembers) {
-                    writeJsonAttributeForFunctionParam(member, index, paramLength, builder, false);
-                    builder.addConditionalSeparator((unionMembers.indexOf(member) < unionMembers.size() - 1),
-                            ATTRIBUTE_SEPARATOR);
+                    // Add separator after combo field if there are valid members
+                    if (!validMembers.isEmpty()) {
+                        builder.addSeparator(ATTRIBUTE_SEPARATOR);
+                    }
+
+                    for (int i = 0; i < validMembers.size(); i++) {
+                        writeJsonAttributeForFunctionParam(validMembers.get(i), index, paramLength, builder, true, false);
+                        if (i < validMembers.size() - 1) {
+                            builder.addSeparator(ATTRIBUTE_SEPARATOR);
+                        }
+                    }
                 }
                 break;
             default:
                 throw new IllegalArgumentException("Unsupported parameter type '" + paramType + "' for parameter: " + functionParam.getValue());
         }
-        builder.addConditionalSeparator((index < paramLength - 1), ATTRIBUTE_SEPARATOR);
+        // Don't add separator for combo members (they're handled by parent union logic)
+        if (!isCombo) {
+            builder.addConditionalSeparator((index < paramLength - 1), ATTRIBUTE_SEPARATOR);
+        }
     }
 
     /**
@@ -671,13 +687,28 @@ public class ConnectorSerializer {
         StringJoiner unionJoiner = new StringJoiner(",", "[", "]");
         for (int i = 0; i < unionMembers.size(); i++) {
             FunctionParam member = unionMembers.get(i);
-            String comboItem = member.getParamType().equals(RECORD) ?
-                    member.getTypeSymbol().getName().orElse("Record" + i) : member.getParamType();
+            String comboItem;
+            if (member.getParamType().equals(RECORD)) {
+                comboItem = member.getTypeSymbol().getName().orElse("Record" + i);
+            } else if (member.getParamType().equals(UNION)) {
+                // For union types, use type name if available, otherwise use indexed name
+                comboItem = member.getTypeSymbol().getName().orElse("Union" + i);
+            } else {
+                comboItem = member.getParamType();
+            }
             unionJoiner.add("\"" + comboItem + "\"");
         }
         String unionComboValues = unionJoiner.toString();
-        String defaultValue = unionMembers.getFirst().getParamType().equals(RECORD) ?
-                unionMembers.getFirst().getTypeSymbol().getName().orElseThrow() : unionMembers.getFirst().getParamType();
+        FunctionParam firstMember = unionMembers.getFirst();
+        String defaultValue;
+        if (firstMember.getParamType().equals(RECORD)) {
+            defaultValue = firstMember.getTypeSymbol().getName().orElseThrow();
+        } else if (firstMember.getParamType().equals(UNION)) {
+            // For union types, use type name if available, otherwise use "union"
+            defaultValue = firstMember.getTypeSymbol().getName().orElse(UNION);
+        } else {
+            defaultValue = firstMember.getParamType();
+        }
         // Combo field for selecting the data type - sanitize the parameter name
         String sanitizedParamName = Utils.sanitizeParamName(paramName);
         String comboName = String.format("%s%s", sanitizedParamName, "DataType");
@@ -754,6 +785,20 @@ public class ConnectorSerializer {
             for (FunctionParam nestedFieldParam : nestedRecordParam.getRecordFieldParams()) {
                 writeRecordFieldParamProperties(nestedFieldParam, connectionType, recordParamName, result, fieldIndexHolder);
             }
+        } else if (fieldParam instanceof UnionFunctionParam unionFieldParam) {
+            // Write the union field with the record parameter name prefix
+            result.append("\n        ");
+            // Use pattern: {connectionType}_{recordParamName}_param{fieldIndex}
+            result.append(String.format("<property name=\"%s_%s_param%d\" value=\"%s\"/>",
+                    connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getValue()));
+            result.append(String.format("\n        <property name=\"%s_%s_paramType%d\" value=\"%s\"/>",
+                    connectionType, recordParamName, fieldIndexHolder[0], fieldParam.getParamType()));
+            // Add dataType property for union type selector - use sanitized param name to match combo field
+            String sanitizedParamName = Utils.sanitizeParamName(fieldParam.getValue());
+            result.append(String.format("\n        <property name=\"%s_%s_dataType%d\" value=\"%s\"/>",
+                    connectionType, recordParamName, fieldIndexHolder[0],
+                    String.format("%s_%s", sanitizedParamName, "DataType")));
+            fieldIndexHolder[0]++;
         } else {
             // Write the leaf field with the record parameter name prefix
             result.append("\n        ");
@@ -858,9 +903,14 @@ public class ConnectorSerializer {
                     String originalFieldName = fieldParam.getValue();
                     String shortFieldName = removeGroupPrefix(originalFieldName, groupName);
 
-                    // Temporarily modify the field name for display
+                    // For UnionFunctionParam, don't change the value because the combo field name
+                    // needs to match the enable conditions (both use qualified name).
+                    // For other field types, temporarily modify the field name for display.
+                    boolean isUnion = fieldParam instanceof UnionFunctionParam;
                     String savedFieldName = fieldParam.getValue();
-                    fieldParam.setValue(shortFieldName);
+                    if (!isUnion) {
+                        fieldParam.setValue(shortFieldName);
+                    }
 
                     // Add indentation before the first attribute in the group
                     if (i == 0) {
@@ -869,7 +919,9 @@ public class ConnectorSerializer {
                     writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords);
 
                     // Restore original field name
-                    fieldParam.setValue(savedFieldName);
+                    if (!isUnion) {
+                        fieldParam.setValue(savedFieldName);
+                    }
                 }
                 
                 // Close the attributeGroup - close elements array, value object, and attributeGroup object

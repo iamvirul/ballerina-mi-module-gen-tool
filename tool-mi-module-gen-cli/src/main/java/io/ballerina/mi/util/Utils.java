@@ -241,6 +241,7 @@ public class Utils {
             case INT, INT_SIGNED8, INT_SIGNED16, INT_SIGNED32, INT_UNSIGNED8, INT_UNSIGNED16, INT_UNSIGNED32 ->
                     Constants.INT;
             case STRING, STRING_CHAR -> Constants.STRING;
+            case SINGLETON -> Constants.STRING;  // Singleton types (e.g., "1", "2" in enums) are treated as strings
             case BOOLEAN, FLOAT, DECIMAL, XML, JSON, ARRAY, RECORD, MAP, UNION, NIL -> typeKind.getName();
             default -> null;
         };

@@ -67,7 +67,7 @@ public class BalConnectorAnalyzer implements Analyzer {
         for (Symbol classSymbol : classSymbols) {
             String className = classSymbol.getName().orElse("");
             Map<String, Map<String, String>> methodDefaultValues = classMethodDefaultValues.getOrDefault(className, Map.of());
-            analyzeClass(compilePackage, (ClassSymbol) classSymbol, methodDefaultValues);
+            analyzeClass(compilePackage, module, (ClassSymbol) classSymbol, methodDefaultValues);
         }
     }
 
@@ -130,12 +130,8 @@ public class BalConnectorAnalyzer implements Analyzer {
         }
     }
 
-    private void analyzeClass(Package compilePackage, ClassSymbol classSymbol, Map<String, Map<String, String>> defaultValues) {
-            analyzeClass(compilePackage, module, (ClassSymbol) classSymbol);
-        }
-    }
-
-    private void analyzeClass(Package compilePackage, Module module, ClassSymbol classSymbol) {
+    private void analyzeClass(Package compilePackage, Module module, ClassSymbol classSymbol,
+                              Map<String, Map<String, String>> defaultValues) {
         SemanticModel semanticModel = compilePackage.getCompilation().getSemanticModel(module.moduleId());
 
         if (!isClientClass(classSymbol) || classSymbol.getName().isEmpty()) {
@@ -199,11 +195,12 @@ public class BalConnectorAnalyzer implements Analyzer {
             String functionKey = (functionType == FunctionType.INIT) ? Constants.INIT_FUNCTION_NAME : functionName;
 
             String returnType = Utils.getReturnTypeName(methodSymbol);
-            Component component = new Component(functionName, Utils.getDocString(methodSymbol.documentation().get()), functionType, Integer.toString(i), List.of(), List.of(), returnType);
+            String docString = methodSymbol.documentation().map(Utils::getDocString).orElse("");
+            Component component = new Component(functionName, docString, functionType, Integer.toString(i),
+                    List.of(), List.of(), returnType);
 
             // Get default values for this specific function
             Map<String, String> functionParamDefaults = defaultValues.getOrDefault(functionKey, Map.of());
-            FunctionType functionType = Utils.getFunctionType(methodSymbol);
 
             // Prepare context for synapse name generation
             SynapseNameContext.Builder contextBuilder = SynapseNameContext.builder().module(module);
@@ -257,9 +254,6 @@ public class BalConnectorAnalyzer implements Analyzer {
                 synapseNameCount.put(synapseName, 0);
             }
 
-            String returnType = Utils.getReturnTypeName(methodSymbol);
-            String docString = methodSymbol.documentation().map(Utils::getDocString).orElse("");
-            
             // Extract path parameters from resource path segments (for resource functions)
             List<PathParamType> pathParams = new ArrayList<>();
             Set<String> pathParamNames = new HashSet<>();
@@ -351,9 +345,9 @@ public class BalConnectorAnalyzer implements Analyzer {
                 // Add a suffix to make the synapse name unique and avoid conflicts
                 finalSynapseName = finalSynapseName + "_operation";
             }
-            
-            Component component = new Component(finalSynapseName, docString, functionType, Integer.toString(i), pathParams, List.of(), returnType);
-            
+
+            component = new Component(finalSynapseName, docString, functionType, Integer.toString(i), pathParams, List.of(), returnType);
+
             // Store operationId as a parameter if found
             if (operationIdOpt.isPresent()) {
                 Param operationIdParam = new Param("operationId", operationIdOpt.get());
@@ -361,48 +355,32 @@ public class BalConnectorAnalyzer implements Analyzer {
             }
 
             // Now add all function parameters (we keep them all, synapse name is made unique instead)
-            int functionParamIndex = 0;
+            int paramIndex = 0;
             if (params.isPresent()) {
                 List<ParameterSymbol> parameterSymbols = params.get();
                 for (ParameterSymbol parameterSymbol : parameterSymbols) {
                     Optional<FunctionParam> functionParam = ParamFactory.createFunctionParam(parameterSymbol, paramIndex);
-                    if (functionParam.isPresent()) {
-                        FunctionParam param = functionParam.get();
-                        // Set default value if available for this function parameter
-                        String paramName = parameterSymbol.getName().orElse("");
-                        if (functionParamDefaults.containsKey(paramName)) {
-                            String defaultValue = functionParamDefaults.get(paramName);
-                            // Clean up the default value - remove surrounding quotes for string literals
-                            if (defaultValue.startsWith("\"") && defaultValue.endsWith("\"")) {
-                                defaultValue = defaultValue.substring(1, defaultValue.length() - 1);
-                            }
-                            param.setDefaultValue(defaultValue);
-                            param.setRequired(false);
-                        }
-                        component.setFunctionParam(param);
-                        // Count expanded params for records, otherwise count 1
-                        paramIndex += countExpandedParams(param);
-                    } else {
-                        // Skip the function if any parameter type is unsupported
+                    if (functionParam.isEmpty()) {
                         String paramType = parameterSymbol.typeDescriptor().typeKind().getName();
                         printStream.println("Skipping function '" + functionName +
                                 "' due to unsupported parameter type: " + paramType);
                         continue methodLoop;
-                    // Skip path parameters as they are handled separately
-                    Optional<String> paramNameOpt = parameterSymbol.getName();
-                    if (paramNameOpt.isPresent() && !pathParamNames.contains(paramNameOpt.get())) {
-                        Optional<FunctionParam> functionParam = ParamFactory.createFunctionParam(parameterSymbol, functionParamIndex);
-                        if (functionParam.isPresent()) {
-                            component.setFunctionParam(functionParam.get());
-                            functionParamIndex++;
-                        } else {
-                            // Skip the function if any parameter type is unsupported
-                            String paramType = parameterSymbol.typeDescriptor().typeKind().getName();
-                            continue methodLoop;
-                        }
                     }
+
+                    FunctionParam param = functionParam.get();
+                    String paramName = parameterSymbol.getName().orElse("");
+                    if (functionParamDefaults.containsKey(paramName)) {
+                        String defaultValue = functionParamDefaults.get(paramName);
+                        if (defaultValue.startsWith("\"") && defaultValue.endsWith("\"")) {
+                            defaultValue = defaultValue.substring(1, defaultValue.length() - 1);
+                        }
+                        param.setDefaultValue(defaultValue);
+                        param.setRequired(false);
+                    }
+                    component.setFunctionParam(param);
+                    paramIndex += countExpandedParams(param);
                 }
-                Param sizeParam = new Param("paramSize", Integer.toString(functionParamIndex));
+                Param sizeParam = new Param("paramSize", Integer.toString(paramIndex));
                 Param functionNameParam = new Param("paramFunctionName", component.getName());
                 component.setParam(sizeParam);
                 component.setParam(functionNameParam);

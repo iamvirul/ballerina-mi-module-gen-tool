@@ -130,7 +130,8 @@ public class ParamFactory {
                     unionFieldParam.setTypeSymbol(fieldTypeSymbol);
                     TypeSymbol actualTypeSymbol = Utils.getActualTypeSymbol(fieldTypeSymbol);
                     if (actualTypeSymbol instanceof BallerinaUnionTypeSymbol ballerinaUnionTypeSymbol) {
-                        populateUnionMemberParams(fieldName, ballerinaUnionTypeSymbol, unionFieldParam);
+                        // Use qualifiedFieldName to ensure enable conditions are properly scoped for nested fields
+                        populateUnionMemberParams(qualifiedFieldName, ballerinaUnionTypeSymbol, unionFieldParam);
                     }
                     // Skip empty unions (all members are nil or unsupported types)
                     if (unionFieldParam.getUnionMemberParams().isEmpty()) {
@@ -179,24 +180,28 @@ public class ParamFactory {
         if (actualTypeSymbol instanceof BallerinaUnionTypeSymbol ballerinaUnionTypeSymbol) {
             populateUnionMemberParams(paramName, ballerinaUnionTypeSymbol, functionParam);
         }
+        functionParam.setTypeSymbol(parameterSymbol.typeDescriptor());
+        // Only try the second approach if the first one didn't find any members
+        if (functionParam.getUnionMemberParams().isEmpty()) {
+            // Resolve type references to get the actual union type symbol
+            actualTypeSymbol = Utils.getActualTypeSymbol(parameterSymbol.typeDescriptor());
+            // Check for UnionTypeSymbol interface instead of concrete class to handle all union type implementations
+            if (actualTypeSymbol instanceof UnionTypeSymbol unionTypeSymbol) {
+                populateUnionMemberParams(paramName, unionTypeSymbol, functionParam);
+            }
+        }
         // Skip empty unions (all members are nil or unsupported types)
+        // Note: Check AFTER both population attempts to ensure we try all possible ways to extract union members
         if (functionParam.getUnionMemberParams().isEmpty()) {
             return Optional.empty();
         }
-        functionParam.setTypeSymbol(parameterSymbol.typeDescriptor());
-        // Resolve type references to get the actual union type symbol
-        TypeSymbol actualTypeSymbol = Utils.getActualTypeSymbol(parameterSymbol.typeDescriptor());
-        // Check for UnionTypeSymbol interface instead of concrete class to handle all union type implementations
-        if (actualTypeSymbol instanceof UnionTypeSymbol unionTypeSymbol) {
-            populateUnionMemberParams(paramName, unionTypeSymbol, functionParam);
-        }
-        // Even if we can't extract union members, still return the UnionFunctionParam
-        // This handles edge cases where the union type structure is complex or not directly accessible
         return Optional.of(functionParam);
     }
 
     private static void populateUnionMemberParams(String paramName, UnionTypeSymbol unionTypeSymbol, UnionFunctionParam functionParam) {
         int memberIndex = 0;
+        java.util.Set<String> seenTypes = new java.util.HashSet<>();  // Track seen actualParamType values to avoid duplicates
+
         for (TypeSymbol memberTypeSymbol : unionTypeSymbol.memberTypeDescriptors()) {
             TypeDescKind actualTypeKind = Utils.getActualTypeKind(memberTypeSymbol);
             String paramType = Utils.getParamTypeName(actualTypeKind);
@@ -208,22 +213,35 @@ public class ParamFactory {
                     if (TypeDescKind.RECORD.getName().equals(paramType)) {
                         // Use record name if available, otherwise use generic "Record" + index
                         actualParamType = memberTypeSymbol.getName().orElse("Record" + memberIndex);
+                    } else if (TypeDescKind.UNION.getName().equals(paramType)) {
+                        // For union types, try to get the type name (e.g., type alias name)
+                        // If no name is available, use generic "Union" + index
+                        actualParamType = memberTypeSymbol.getName().orElse("Union" + memberIndex);
                     } else {
                         actualParamType = paramType;
                     }
+
+                    // Skip if we've already added this type (e.g., multiple singleton strings "1", "2" both map to "string")
+                    if (seenTypes.contains(actualParamType)) {
+                        continue;
+                    }
+                    seenTypes.add(actualParamType);
+
                     String memberParamName = paramName + StringUtils.capitalize(actualParamType);
-                    
+
                     // If the member type is itself a union, create a UnionFunctionParam recursively
                     FunctionParam memberParam;
                     TypeSymbol actualMemberTypeSymbol = Utils.getActualTypeSymbol(memberTypeSymbol);
                     if (actualTypeKind == TypeDescKind.UNION && actualMemberTypeSymbol instanceof UnionTypeSymbol memberUnionSymbol) {
                         UnionFunctionParam memberUnionParam = new UnionFunctionParam(Integer.toString(memberIndex), memberParamName, paramType);
                         memberUnionParam.setTypeSymbol(memberTypeSymbol);
+                        memberUnionParam.setDisplayTypeName(actualParamType);
                         populateUnionMemberParams(memberParamName, memberUnionSymbol, memberUnionParam);
                         memberParam = memberUnionParam;
                     } else {
                         memberParam = new FunctionParam(Integer.toString(memberIndex), memberParamName, paramType);
                         memberParam.setTypeSymbol(memberTypeSymbol);
+                        memberParam.setDisplayTypeName(actualParamType);
                     }
                     // Use sanitized parameter name in enable condition for consistency
                     String sanitizedParamName = io.ballerina.mi.util.Utils.sanitizeParamName(paramName);

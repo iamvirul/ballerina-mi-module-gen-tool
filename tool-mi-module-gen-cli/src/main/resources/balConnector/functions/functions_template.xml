@@ -47,7 +47,7 @@
         {{/eq ~}}
         {{#eq paramType "union" ~}}
         {{#each unionMemberParams ~}}
-        <property name="param{{@../index}}Union{{capitalize paramType}}" value="{{sanitizeParamName value}}"/>
+        <property name="param{{@../index}}Union{{capitalize displayTypeName}}" value="{{sanitizeParamName value}}"/>
         {{/each ~}}
         {{/eq ~}}
         {{/each ~}}
