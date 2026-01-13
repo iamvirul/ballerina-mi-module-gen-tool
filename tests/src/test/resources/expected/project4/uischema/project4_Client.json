@@ -30,33 +30,14 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "httpVersionDataType",
-                    "displayName": "httpVersionDataType",
-                    "inputType": "combo",
-                    "comboValues": [
-                      "string"
-                    ],
-                    "defaultValue": "string",
-                    "required": "false",
-                    "helpTip": "The HTTP version understood by the client"
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "httpVersionString",
-                    "displayName": "httpVersionString",
+                    "name": "httpVersion",
+                    "displayName": "httpVersion",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "helpTip": "",
+                    "helpTip": "The HTTP version understood by the client",
                     "validateType": "",
-                    "matchPattern": "",
-                    "enableCondition": [
-                      {
-                        "httpVersionDataType": "string"
-                      }
-                    ]
+                    "matchPattern": ""
                   }
                 },
                 {
@@ -68,65 +49,27 @@
                       {
                         "type": "attribute",
                         "value": {
-                          "name": "http1Settings.keepAliveDataType",
-                          "displayName": "keepAliveDataType",
-                          "inputType": "combo",
-                          "comboValues": [
-                            "string"
-                          ],
-                          "defaultValue": "string",
-                          "required": "false",
-                          "helpTip": "Specifies whether to reuse a connection for multiple requests"
-                        }
-                      },
-                      {
-                        "type": "attribute",
-                        "value": {
-                          "name": "http1Settings.keepAliveString",
-                          "displayName": "keepAliveString",
+                          "name": "keepAlive",
+                          "displayName": "keepAlive",
                           "inputType": "stringOrExpression",
                           "defaultValue": "",
                           "required": "false",
-                          "helpTip": "",
+                          "helpTip": "Specifies whether to reuse a connection for multiple requests",
                           "validateType": "",
-                          "matchPattern": "",
-                          "enableCondition": [
-                            {
-                              "http1Settings.keepAliveDataType": "string"
-                            }
-                          ]
+                          "matchPattern": ""
                         }
                       },
                       {
                         "type": "attribute",
                         "value": {
-                          "name": "http1Settings.chunkingDataType",
-                          "displayName": "chunkingDataType",
-                          "inputType": "combo",
-                          "comboValues": [
-                            "string"
-                          ],
-                          "defaultValue": "string",
-                          "required": "false",
-                          "helpTip": "The chunking behaviour of the request"
-                        }
-                      },
-                      {
-                        "type": "attribute",
-                        "value": {
-                          "name": "http1Settings.chunkingString",
-                          "displayName": "chunkingString",
+                          "name": "chunking",
+                          "displayName": "chunking",
                           "inputType": "stringOrExpression",
                           "defaultValue": "",
                           "required": "false",
-                          "helpTip": "",
+                          "helpTip": "The chunking behaviour of the request",
                           "validateType": "",
-                          "matchPattern": "",
-                          "enableCondition": [
-                            {
-                              "http1Settings.chunkingDataType": "string"
-                            }
-                          ]
+                          "matchPattern": ""
                         }
                       },
                       {
@@ -428,33 +371,14 @@
                       {
                         "type": "attribute",
                         "value": {
-                          "name": "cache.policyDataType",
-                          "displayName": "policyDataType",
-                          "inputType": "combo",
-                          "comboValues": [
-                            "string"
-                          ],
-                          "defaultValue": "string",
-                          "required": "false",
-                          "helpTip": ""
-                        }
-                      },
-                      {
-                        "type": "attribute",
-                        "value": {
-                          "name": "cache.policyString",
-                          "displayName": "policyString",
+                          "name": "policy",
+                          "displayName": "policy",
                           "inputType": "stringOrExpression",
                           "defaultValue": "",
                           "required": "false",
                           "helpTip": "",
                           "validateType": "",
-                          "matchPattern": "",
-                          "enableCondition": [
-                            {
-                              "cache.policyDataType": "string"
-                            }
-                          ]
+                          "matchPattern": ""
                         }
                       }
                     ]
@@ -463,33 +387,14 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "compressionDataType",
-                    "displayName": "compressionDataType",
-                    "inputType": "combo",
-                    "comboValues": [
-                      "string"
-                    ],
-                    "defaultValue": "string",
-                    "required": "false",
-                    "helpTip": "Specifies the way of handling compression (&#x60;accept-encoding&#x60;) header"
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "compressionString",
-                    "displayName": "compressionString",
+                    "name": "compression",
+                    "displayName": "compression",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
-                    "helpTip": "",
+                    "helpTip": "Specifies the way of handling compression (&#x60;accept-encoding&#x60;) header",
                     "validateType": "",
-                    "matchPattern": "",
-                    "enableCondition": [
-                      {
-                        "compressionDataType": "string"
-                      }
-                    ]
+                    "matchPattern": ""
                   }
                 },
                 {
@@ -840,33 +745,14 @@
                             {
                               "type": "attribute",
                               "value": {
-                                "name": "secureSocket.protocol.nameDataType",
-                                "displayName": "nameDataType",
-                                "inputType": "combo",
-                                "comboValues": [
-                                  "string"
-                                ],
-                                "defaultValue": "string",
-                                "required": "true",
-                                "helpTip": ""
-                              }
-                            },
-                            {
-                              "type": "attribute",
-                              "value": {
-                                "name": "secureSocket.protocol.nameString",
-                                "displayName": "nameString",
+                                "name": "name",
+                                "displayName": "name",
                                 "inputType": "stringOrExpression",
                                 "defaultValue": "",
                                 "required": "true",
                                 "helpTip": "",
                                 "validateType": "",
-                                "matchPattern": "",
-                                "enableCondition": [
-                                  {
-                                    "secureSocket.protocol.nameDataType": "string"
-                                  }
-                                ]
+                                "matchPattern": ""
                               }
                             },
                             {
@@ -894,33 +780,14 @@
                             {
                               "type": "attribute",
                               "value": {
-                                "name": "secureSocket.certValidation.typeDataType",
-                                "displayName": "typeDataType",
-                                "inputType": "combo",
-                                "comboValues": [
-                                  "string"
-                                ],
-                                "defaultValue": "string",
-                                "required": "false",
-                                "helpTip": ""
-                              }
-                            },
-                            {
-                              "type": "attribute",
-                              "value": {
-                                "name": "secureSocket.certValidation.typeString",
-                                "displayName": "typeString",
+                                "name": "type",
+                                "displayName": "type",
                                 "inputType": "stringOrExpression",
                                 "defaultValue": "",
                                 "required": "false",
                                 "helpTip": "",
                                 "validateType": "",
-                                "matchPattern": "",
-                                "enableCondition": [
-                                  {
-                                    "secureSocket.certValidation.typeDataType": "string"
-                                  }
-                                ]
+                                "matchPattern": ""
                               }
                             },
                             {

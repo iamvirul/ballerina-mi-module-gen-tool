@@ -87,14 +87,11 @@ value between 0 and 1"/>
         <property name="PROJECT4_CLIENT_param0" value="config"/>
         <property name="PROJECT4_CLIENT_paramType0" value="record"/>
         <property name="PROJECT4_CLIENT_config_param0" value="httpVersion"/>
-        <property name="PROJECT4_CLIENT_config_paramType0" value="union"/>
-        <property name="PROJECT4_CLIENT_config_dataType0" value="httpVersion_DataType"/>
+        <property name="PROJECT4_CLIENT_config_paramType0" value="string"/>
         <property name="PROJECT4_CLIENT_config_param1" value="http1Settings.keepAlive"/>
-        <property name="PROJECT4_CLIENT_config_paramType1" value="union"/>
-        <property name="PROJECT4_CLIENT_config_dataType1" value="http1Settings.keepAlive_DataType"/>
+        <property name="PROJECT4_CLIENT_config_paramType1" value="string"/>
         <property name="PROJECT4_CLIENT_config_param2" value="http1Settings.chunking"/>
-        <property name="PROJECT4_CLIENT_config_paramType2" value="union"/>
-        <property name="PROJECT4_CLIENT_config_dataType2" value="http1Settings.chunking_DataType"/>
+        <property name="PROJECT4_CLIENT_config_paramType2" value="string"/>
         <property name="PROJECT4_CLIENT_config_param3" value="http1Settings.proxy.host"/>
         <property name="PROJECT4_CLIENT_config_paramType3" value="string"/>
         <property name="PROJECT4_CLIENT_config_param4" value="http1Settings.proxy.port"/>
@@ -136,11 +133,9 @@ value between 0 and 1"/>
         <property name="PROJECT4_CLIENT_config_param22" value="cache.evictionFactor"/>
         <property name="PROJECT4_CLIENT_config_paramType22" value="float"/>
         <property name="PROJECT4_CLIENT_config_param23" value="cache.policy"/>
-        <property name="PROJECT4_CLIENT_config_paramType23" value="union"/>
-        <property name="PROJECT4_CLIENT_config_dataType23" value="cache.policy_DataType"/>
+        <property name="PROJECT4_CLIENT_config_paramType23" value="string"/>
         <property name="PROJECT4_CLIENT_config_param24" value="compression"/>
-        <property name="PROJECT4_CLIENT_config_paramType24" value="union"/>
-        <property name="PROJECT4_CLIENT_config_dataType24" value="compression_DataType"/>
+        <property name="PROJECT4_CLIENT_config_paramType24" value="string"/>
         <property name="PROJECT4_CLIENT_config_param25" value="circuitBreaker.rollingWindow.requestVolumeThreshold"/>
         <property name="PROJECT4_CLIENT_config_paramType25" value="int"/>
         <property name="PROJECT4_CLIENT_config_param26" value="circuitBreaker.rollingWindow.timeWindow"/>
@@ -178,13 +173,11 @@ value between 0 and 1"/>
         <property name="PROJECT4_CLIENT_config_paramType41" value="union"/>
         <property name="PROJECT4_CLIENT_config_dataType41" value="secureSocket.key_DataType"/>
         <property name="PROJECT4_CLIENT_config_param42" value="secureSocket.protocol.name"/>
-        <property name="PROJECT4_CLIENT_config_paramType42" value="union"/>
-        <property name="PROJECT4_CLIENT_config_dataType42" value="secureSocket.protocol.name_DataType"/>
+        <property name="PROJECT4_CLIENT_config_paramType42" value="string"/>
         <property name="PROJECT4_CLIENT_config_param43" value="secureSocket.protocol.versions"/>
         <property name="PROJECT4_CLIENT_config_paramType43" value="array"/>
         <property name="PROJECT4_CLIENT_config_param44" value="secureSocket.certValidation.type"/>
-        <property name="PROJECT4_CLIENT_config_paramType44" value="union"/>
-        <property name="PROJECT4_CLIENT_config_dataType44" value="secureSocket.certValidation.type_DataType"/>
+        <property name="PROJECT4_CLIENT_config_paramType44" value="string"/>
         <property name="PROJECT4_CLIENT_config_param45" value="secureSocket.certValidation.cacheSize"/>
         <property name="PROJECT4_CLIENT_config_paramType45" value="int"/>
         <property name="PROJECT4_CLIENT_config_param46" value="secureSocket.certValidation.cacheValidityPeriod"/>

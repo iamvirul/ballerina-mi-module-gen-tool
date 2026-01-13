@@ -45,33 +45,14 @@
                 {
                   "type": "attribute",
                   "value": {
-                    "name": "allowNullDataType",
-                    "displayName": "allowNullDataType",
-                    "inputType": "combo",
-                    "comboValues": [
-                      "string"
-                    ],
-                    "defaultValue": "string",
-                    "required": "false",
-                    "helpTip": ""
-                  }
-                },
-                {
-                  "type": "attribute",
-                  "value": {
-                    "name": "allowNullString",
-                    "displayName": "allowNullString",
+                    "name": "allowNull",
+                    "displayName": "allowNull",
                     "inputType": "stringOrExpression",
                     "defaultValue": "",
                     "required": "false",
                     "helpTip": "",
                     "validateType": "",
-                    "matchPattern": "",
-                    "enableCondition": [
-                      {
-                        "allowNullDataType": "string"
-                      }
-                    ]
+                    "matchPattern": ""
                   }
                 }
               ]
