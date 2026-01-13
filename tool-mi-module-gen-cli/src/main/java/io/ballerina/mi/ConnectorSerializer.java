@@ -603,15 +603,24 @@ public class ConnectorSerializer {
                                                            boolean isCombo, boolean expandRecords, String groupName) throws IOException {
         String paramType = functionParam.getParamType();
         String paramValue = functionParam.getValue();
-        String sanitizedParamName = Utils.sanitizeParamName(paramValue);
-        // For display, remove group prefix if we're in a group context
+
+        
+        // For display and ID generation, remove group prefix if we're in a group context
         // For nested fields like "http1Settings.proxy.host" in "Proxy" group, 
         // remove everything up to and including the group name segment
-        String displayName = functionParam.getValue();
-        if (groupName != null && !groupName.isEmpty() && displayName != null) {
-            // Use removeGroupPrefix which handles both direct children and nested groups
-            displayName = removeGroupPrefix(displayName, groupName);
+        if (groupName != null && !groupName.isEmpty() && paramValue != null) {
+            paramValue = removeGroupPrefix(paramValue, groupName);
         }
+        
+        String sanitizedParamName = Utils.sanitizeParamName(paramValue);
+        String displayName = paramValue;
+        
+        // Ensure display name is friendly (not fully qualified) by taking the last segment
+        if (displayName.contains(".")) {
+             displayName = displayName.substring(displayName.lastIndexOf('.') + 1);
+        }
+
+        
         String defaultValue = functionParam.getDefaultValue() != null ? functionParam.getDefaultValue() : "";
         switch (paramType) {
             case STRING, XML, JSON, MAP, ARRAY:
@@ -691,12 +700,56 @@ public class ConnectorSerializer {
                         builder.addSeparator(ATTRIBUTE_SEPARATOR);
                     }
 
+                    // Aggregate record members to write them together (prevents duplicate groups)
+                    List<FunctionParam> recordMembers = new ArrayList<>();
+                    List<FunctionParam> simpleMembers = new ArrayList<>();
+                    
                     for (int i = 0; i < validMembers.size(); i++) {
-                        // Pass group name context for union members to remove prefix from displayName
-                        writeJsonAttributeForFunctionParam(validMembers.get(i), index, paramLength, builder, true, true, effectiveGroupName);
-                        if (i < validMembers.size() - 1) {
+                        FunctionParam member = validMembers.get(i);
+                        if (member.getParamType().equals(RECORD) && expandRecords) {
+                            recordMembers.add(member);
+                        } else {
+                            simpleMembers.add(member);
+                        }
+                    }
+
+                    // Write simple members first
+                    for (int i = 0; i < simpleMembers.size(); i++) {
+                        writeJsonAttributeForFunctionParam(simpleMembers.get(i), index, paramLength, builder, true, expandRecords, effectiveGroupName);
+                        if (i < simpleMembers.size() - 1 || !recordMembers.isEmpty()) {
                             builder.addSeparator(ATTRIBUTE_SEPARATOR);
                         }
+                    }
+                    
+                    // Write aggregated record fields
+                    if (!recordMembers.isEmpty()) {
+                        // Create a virtual RecordFunctionParam to hold all fields from all record members
+                        RecordFunctionParam virtualRecordParam = new RecordFunctionParam(
+                            Integer.toString(index), 
+                            functionParam.getValue(), 
+                            RECORD
+                        );
+                        // Inherit the enable condition from the union param itself if needed
+                        virtualRecordParam.setEnableCondition(functionParam.getEnableCondition());
+                        
+                        // Collect all fields
+                        for (FunctionParam member : recordMembers) {
+                            if (member instanceof RecordFunctionParam recordParam) {
+                                String memberCondition = member.getEnableCondition();
+                                for (FunctionParam field : recordParam.getRecordFieldParams()) {
+                                    // Propagate member condition to field - essential because virtualRecordParam
+                                    // will only hold the union's general condition, not the specific member selection condition
+                                    String fieldCondition = field.getEnableCondition();
+                                    String mergedCondition = mergeEnableConditions(memberCondition, fieldCondition);
+                                    field.setEnableCondition(mergedCondition);
+                                    
+                                    virtualRecordParam.addRecordFieldParam(field);
+                                }
+                            }
+                        }
+                        
+                        // Write combined fields - this will group them correctly under specialized groups (e.g. "Auth")
+                        writeRecordFields(virtualRecordParam, builder, true, effectiveGroupName);
                     }
                 }
                 break;
@@ -1042,25 +1095,27 @@ public class ConnectorSerializer {
                         String originalFieldName = fieldParam.getValue();
                         String shortFieldName = removeGroupPrefix(originalFieldName, groupName);
 
-                        // For UnionFunctionParam, don't change the value because the combo field name
-                        // needs to match the enable conditions (both use qualified name).
-                        // For other field types, temporarily modify the field name for display.
+                        // For UnionFunctionParam, we need to update the enable conditions of its members
+                        // because the combo field name (derived from param name) is changing.
                         boolean isUnion = fieldParam instanceof UnionFunctionParam;
                         String savedFieldName = fieldParam.getValue();
-                        if (!isUnion) {
-                            fieldParam.setValue(shortFieldName);
+                        
+                        if (isUnion) {
+                            updateEnableConditionsForUnionMembers((UnionFunctionParam) fieldParam, savedFieldName, shortFieldName);
                         }
+                        fieldParam.setValue(shortFieldName);
 
                         // Add indentation before the first attribute in the group
                         if (i == 0) {
                             builder.addSeparator("                  ");  // 18 spaces to align with template content
                         }
-                        // Pass groupName for union members to remove prefix from displayName
-                        writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords, isUnion ? groupName : null);
+                        // Pass groupName to remove prefix from displayName
+                        writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords, groupName);
 
-                        // Restore original field name
-                        if (!isUnion) {
-                            fieldParam.setValue(savedFieldName);
+                        // Restore original field name and conditions
+                        fieldParam.setValue(savedFieldName);
+                        if (isUnion) {
+                            updateEnableConditionsForUnionMembers((UnionFunctionParam) fieldParam, shortFieldName, savedFieldName);
                         }
                     }
 
@@ -1431,5 +1486,23 @@ public class ConnectorSerializer {
         
         // Fallback for unexpected format - return parent condition to be safe (hides if parent hidden)
         return parentCondition;
+    }
+
+    /**
+     * Updates the enable conditions of union members when the union parameter itself is renamed.
+     * This ensures that the member conditions (which reference the union param name) remain valid.
+     */
+    private static void updateEnableConditionsForUnionMembers(UnionFunctionParam unionParam, String oldName, String newName) {
+        String oldConditionKey = Utils.sanitizeParamName(oldName) + "DataType";
+        String newConditionKey = Utils.sanitizeParamName(newName) + "DataType";
+
+        for (FunctionParam member : unionParam.getUnionMemberParams()) {
+             String condition = member.getEnableCondition();
+             if (condition != null && !condition.isEmpty()) {
+                 // Condition format: [{"key":"value"}]
+                 // We safely replace the quoted key
+                 member.setEnableCondition(condition.replace("\"" + oldConditionKey + "\"", "\"" + newConditionKey + "\""));
+             }
+        }
     }
 }

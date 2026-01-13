@@ -652,24 +652,6 @@
                       {
                         "type": "attribute",
                         "value": {
-                          "name": "secureSocket.certTrustStore",
-                          "displayName": "certTrustStore",
-                          "inputType": "stringOrExpression",
-                          "defaultValue": "",
-                          "required": "false",
-                          "helpTip": "",
-                          "validateType": "",
-                          "matchPattern": "",
-                          "enableCondition": [
-                            {
-                              "secureSocket.certDataType": "TrustStore"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "type": "attribute",
-                        "value": {
                           "name": "secureSocket.certString",
                           "displayName": "certString",
                           "inputType": "stringOrExpression",
@@ -681,6 +663,51 @@
                           "enableCondition": [
                             {
                               "secureSocket.certDataType": "string"
+                            }
+                          ]
+                        }
+                      },
+                      {
+                        "type": "attributeGroup",
+                        "value": {
+                          "groupName": "Cert",
+                          "collapsed": false,
+                          "elements": [
+                            {
+                              "type": "attribute",
+                              "value": {
+                                "name": "path",
+                                "displayName": "path",
+                                "inputType": "stringOrExpression",
+                                "defaultValue": "",
+                                "required": "true",
+                                "helpTip": "",
+                                "validateType": "",
+                                "matchPattern": "",
+                                "enableCondition": [
+                                  {
+                                    "secureSocket.certDataType": "TrustStore"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "attribute",
+                              "value": {
+                                "name": "password",
+                                "displayName": "password",
+                                "inputType": "stringOrExpression",
+                                "defaultValue": "",
+                                "required": "true",
+                                "helpTip": "",
+                                "validateType": "",
+                                "matchPattern": "",
+                                "enableCondition": [
+                                  {
+                                    "secureSocket.certDataType": "TrustStore"
+                                  }
+                                ]
+                              }
                             }
                           ]
                         }
@@ -701,37 +728,100 @@
                         }
                       },
                       {
-                        "type": "attribute",
+                        "type": "attributeGroup",
                         "value": {
-                          "name": "secureSocket.keyKeyStore",
-                          "displayName": "keyKeyStore",
-                          "inputType": "stringOrExpression",
-                          "defaultValue": "",
-                          "required": "false",
-                          "helpTip": "",
-                          "validateType": "",
-                          "matchPattern": "",
-                          "enableCondition": [
+                          "groupName": "Key",
+                          "collapsed": false,
+                          "elements": [
                             {
-                              "secureSocket.keyDataType": "KeyStore"
-                            }
-                          ]
-                        }
-                      },
-                      {
-                        "type": "attribute",
-                        "value": {
-                          "name": "secureSocket.keyCertKey",
-                          "displayName": "keyCertKey",
-                          "inputType": "stringOrExpression",
-                          "defaultValue": "",
-                          "required": "false",
-                          "helpTip": "",
-                          "validateType": "",
-                          "matchPattern": "",
-                          "enableCondition": [
+                              "type": "attribute",
+                              "value": {
+                                "name": "path",
+                                "displayName": "path",
+                                "inputType": "stringOrExpression",
+                                "defaultValue": "",
+                                "required": "true",
+                                "helpTip": "",
+                                "validateType": "",
+                                "matchPattern": "",
+                                "enableCondition": [
+                                  {
+                                    "secureSocket.keyDataType": "KeyStore"
+                                  }
+                                ]
+                              }
+                            },
                             {
-                              "secureSocket.keyDataType": "CertKey"
+                              "type": "attribute",
+                              "value": {
+                                "name": "password",
+                                "displayName": "password",
+                                "inputType": "stringOrExpression",
+                                "defaultValue": "",
+                                "required": "true",
+                                "helpTip": "",
+                                "validateType": "",
+                                "matchPattern": "",
+                                "enableCondition": [
+                                  {
+                                    "secureSocket.keyDataType": "KeyStore"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "attribute",
+                              "value": {
+                                "name": "certFile",
+                                "displayName": "certFile",
+                                "inputType": "stringOrExpression",
+                                "defaultValue": "",
+                                "required": "true",
+                                "helpTip": "",
+                                "validateType": "",
+                                "matchPattern": "",
+                                "enableCondition": [
+                                  {
+                                    "secureSocket.keyDataType": "CertKey"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "attribute",
+                              "value": {
+                                "name": "keyFile",
+                                "displayName": "keyFile",
+                                "inputType": "stringOrExpression",
+                                "defaultValue": "",
+                                "required": "true",
+                                "helpTip": "",
+                                "validateType": "",
+                                "matchPattern": "",
+                                "enableCondition": [
+                                  {
+                                    "secureSocket.keyDataType": "CertKey"
+                                  }
+                                ]
+                              }
+                            },
+                            {
+                              "type": "attribute",
+                              "value": {
+                                "name": "keyPassword",
+                                "displayName": "keyPassword",
+                                "inputType": "stringOrExpression",
+                                "defaultValue": "",
+                                "required": "false",
+                                "helpTip": "",
+                                "validateType": "",
+                                "matchPattern": "",
+                                "enableCondition": [
+                                  {
+                                    "secureSocket.keyDataType": "CertKey"
+                                  }
+                                ]
+                              }
                             }
                           ]
                         }
