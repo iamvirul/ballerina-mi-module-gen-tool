@@ -35,12 +35,16 @@
                     "name": "valueDataType",
                     "displayName": "valueDataType",
                     "inputType": "combo",
-                    "comboValues": ["int","boolean"],
+                    "comboValues": [
+                      "int",
+                      "boolean"
+                    ],
                     "defaultValue": "int",
                     "required": "true",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "valueInt",
@@ -51,9 +55,14 @@
                     "helpTip": "",
                     "validateType": "regex",
                     "matchPattern": "^(-?\\d+|\\$\\{.+\\}\\)$",
-                    "enableCondition": [{"valueDataType": "int"}]
+                    "enableCondition": [
+                      {
+                        "valueDataType": "int"
+                      }
+                    ]
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "valueBoolean",
@@ -64,7 +73,11 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"valueDataType": "boolean"}]
+                    "enableCondition": [
+                      {
+                        "valueDataType": "boolean"
+                      }
+                    ]
                   }
                 }
               ]

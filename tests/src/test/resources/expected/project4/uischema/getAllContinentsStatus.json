@@ -35,12 +35,15 @@
                     "name": "yesterdayDataType",
                     "displayName": "yesterdayDataType",
                     "inputType": "combo",
-                    "comboValues": ["string"],
+                    "comboValues": [
+                      "string"
+                    ],
                     "defaultValue": "string",
                     "required": "false",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "yesterdayString",
@@ -51,20 +54,28 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"yesterdayDataType": "string"}]
+                    "enableCondition": [
+                      {
+                        "yesterdayDataType": "string"
+                      }
+                    ]
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "twoDaysAgoDataType",
                     "displayName": "twoDaysAgoDataType",
                     "inputType": "combo",
-                    "comboValues": ["string"],
+                    "comboValues": [
+                      "string"
+                    ],
                     "defaultValue": "string",
                     "required": "false",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "twoDaysAgoString",
@@ -75,20 +86,28 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"twoDaysAgoDataType": "string"}]
+                    "enableCondition": [
+                      {
+                        "twoDaysAgoDataType": "string"
+                      }
+                    ]
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "sortDataType",
                     "displayName": "sortDataType",
                     "inputType": "combo",
-                    "comboValues": ["string"],
+                    "comboValues": [
+                      "string"
+                    ],
                     "defaultValue": "string",
                     "required": "false",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "sortString",
@@ -99,20 +118,28 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"sortDataType": "string"}]
+                    "enableCondition": [
+                      {
+                        "sortDataType": "string"
+                      }
+                    ]
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "allowNullDataType",
                     "displayName": "allowNullDataType",
                     "inputType": "combo",
-                    "comboValues": ["string"],
+                    "comboValues": [
+                      "string"
+                    ],
                     "defaultValue": "string",
                     "required": "false",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "allowNullString",
@@ -123,7 +150,11 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"allowNullDataType": "string"}]
+                    "enableCondition": [
+                      {
+                        "allowNullDataType": "string"
+                      }
+                    ]
                   }
                 }
               ]

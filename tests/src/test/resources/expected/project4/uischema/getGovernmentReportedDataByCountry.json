@@ -41,18 +41,22 @@
                     "validateType": "",
                     "matchPattern": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "allowNullDataType",
                     "displayName": "allowNullDataType",
                     "inputType": "combo",
-                    "comboValues": ["string"],
+                    "comboValues": [
+                      "string"
+                    ],
                     "defaultValue": "string",
                     "required": "false",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "allowNullString",
@@ -63,7 +67,11 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"allowNullDataType": "string"}]
+                    "enableCondition": [
+                      {
+                        "allowNullDataType": "string"
+                      }
+                    ]
                   }
                 }
               ]

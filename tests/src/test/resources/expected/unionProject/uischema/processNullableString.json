@@ -35,12 +35,15 @@
                     "name": "valueDataType",
                     "displayName": "valueDataType",
                     "inputType": "combo",
-                    "comboValues": ["string"],
+                    "comboValues": [
+                      "string"
+                    ],
                     "defaultValue": "string",
                     "required": "false",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "valueString",
@@ -51,7 +54,11 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"valueDataType": "string"}]
+                    "enableCondition": [
+                      {
+                        "valueDataType": "string"
+                      }
+                    ]
                   }
                 }
               ]

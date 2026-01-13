@@ -22,6 +22,10 @@ import io.ballerina.compiler.api.SemanticModel;
 import io.ballerina.compiler.api.symbols.*;
 import io.ballerina.compiler.syntax.tree.*;
 import io.ballerina.mi.connectorModel.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -58,9 +62,32 @@ public class Utils {
      * These are private utility functions used in the generateXml method
      */
     public static void writeFile(String fileName, String content) throws IOException {
+        // Auto-format JSON files for consistent, readable output
+        String outputContent = content;
+        if (fileName.endsWith(".json")) {
+            outputContent = formatJson(content);
+        }
         FileWriter myWriter = new FileWriter(fileName);
-        myWriter.write(content);
+        myWriter.write(outputContent);
         myWriter.close();
+    }
+
+    /**
+     * Format a JSON string with consistent 2-space indentation.
+     * This ensures all generated JSON files have proper, readable formatting.
+     *
+     * @param json The JSON string to format (may have inconsistent indentation)
+     * @return The formatted JSON string with consistent 2-space indentation
+     */
+    public static String formatJson(String json) {
+        try {
+            Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+            JsonElement jsonElement = JsonParser.parseString(json);
+            return gson.toJson(jsonElement);
+        } catch (Exception e) {
+            // If parsing fails, return the original content
+            return json;
+        }
     }
 
 //    /**

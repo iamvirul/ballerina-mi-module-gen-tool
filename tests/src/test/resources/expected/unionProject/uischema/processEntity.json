@@ -35,12 +35,16 @@
                     "name": "entityDataType",
                     "displayName": "entityDataType",
                     "inputType": "combo",
-                    "comboValues": ["Person","Company"],
+                    "comboValues": [
+                      "Person",
+                      "Company"
+                    ],
                     "defaultValue": "Person",
                     "required": "true",
                     "helpTip": ""
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "entityPerson",
@@ -51,9 +55,14 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"entityDataType": "Person"}]
+                    "enableCondition": [
+                      {
+                        "entityDataType": "Person"
+                      }
+                    ]
                   }
-                },{
+                },
+                {
                   "type": "attribute",
                   "value": {
                     "name": "entityCompany",
@@ -64,7 +73,11 @@
                     "helpTip": "",
                     "validateType": "",
                     "matchPattern": "",
-                    "enableCondition": [{"entityDataType": "Company"}]
+                    "enableCondition": [
+                      {
+                        "entityDataType": "Company"
+                      }
+                    ]
                   }
                 }
               ]
