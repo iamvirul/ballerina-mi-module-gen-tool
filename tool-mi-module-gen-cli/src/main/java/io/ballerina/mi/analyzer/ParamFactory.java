@@ -260,6 +260,14 @@ public class ParamFactory {
                         memberUnionParam.setDisplayTypeName(actualParamType);
                         populateUnionMemberParams(memberParamName, memberUnionSymbol, memberUnionParam);
                         memberParam = memberUnionParam;
+                    } else if (actualTypeKind == TypeDescKind.RECORD && actualMemberTypeSymbol instanceof RecordTypeSymbol recordTypeSymbol) {
+                        RecordFunctionParam recordParam = new RecordFunctionParam(Integer.toString(memberIndex), memberParamName, paramType);
+                        recordParam.setTypeSymbol(memberTypeSymbol);
+                        recordParam.setDisplayTypeName(actualParamType);
+                        recordParam.setRecordName(actualParamType);
+                        // Use original paramName as parent path for fields so they are generated as "paramName.field"
+                        populateRecordFieldParams(recordParam, recordTypeSymbol, paramName);
+                        memberParam = recordParam;
                     } else {
                         memberParam = new FunctionParam(Integer.toString(memberIndex), memberParamName, paramType);
                         memberParam.setTypeSymbol(memberTypeSymbol);
