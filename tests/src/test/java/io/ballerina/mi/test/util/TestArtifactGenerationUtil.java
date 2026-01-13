@@ -40,6 +40,7 @@ public class TestArtifactGenerationUtil {
             case "project2" -> generateProject2ExpectedArtifacts();
             case "project3" -> generateProject3ExpectedArtifacts();
             case "project4" -> generateProject4ExpectedArtifacts();
+            case "project5" -> generateProject5ExpectedArtifacts();
             case "project6" -> generateProject6ExpectedArtifacts();
             case "unionProject" -> generateUnionProjectExpectedArtifacts();
             case "nestedRecordConflictProject" -> generateNestedRecordConflictProjectExpectedArtifacts();
@@ -389,7 +390,7 @@ public class TestArtifactGenerationUtil {
 
     private static void printUsageAndExit() {
         System.err.println("Usage: gradle :mi-tests:generateExpectedArtifacts "
-                + "-PartifactTarget=<project1|project2|project3|project4|project6|unionProject|"
+                + "-PartifactTarget=<project1|project2|project3|project4|project5|project6|unionProject|"
                 + "nestedRecordConflictProject|central> "
                 + "[-PcentralPackage=<org/name:version,org2/name2:version2,...>]");
         System.exit(1);
