@@ -637,7 +637,7 @@
                       {
                         "type": "attribute",
                         "value": {
-                          "name": "secureSocket.certDataType",
+                          "name": "certDataType",
                           "displayName": "certDataType",
                           "inputType": "combo",
                           "comboValues": [
@@ -652,7 +652,7 @@
                       {
                         "type": "attribute",
                         "value": {
-                          "name": "secureSocket.certString",
+                          "name": "certString",
                           "displayName": "certString",
                           "inputType": "stringOrExpression",
                           "defaultValue": "",
@@ -662,7 +662,7 @@
                           "matchPattern": "",
                           "enableCondition": [
                             {
-                              "secureSocket.certDataType": "string"
+                              "certDataType": "string"
                             }
                           ]
                         }
@@ -686,7 +686,7 @@
                                 "matchPattern": "",
                                 "enableCondition": [
                                   {
-                                    "secureSocket.certDataType": "TrustStore"
+                                    "certDataType": "TrustStore"
                                   }
                                 ]
                               }
@@ -704,7 +704,7 @@
                                 "matchPattern": "",
                                 "enableCondition": [
                                   {
-                                    "secureSocket.certDataType": "TrustStore"
+                                    "certDataType": "TrustStore"
                                   }
                                 ]
                               }
@@ -715,7 +715,7 @@
                       {
                         "type": "attribute",
                         "value": {
-                          "name": "secureSocket.keyDataType",
+                          "name": "keyDataType",
                           "displayName": "keyDataType",
                           "inputType": "combo",
                           "comboValues": [
@@ -746,7 +746,7 @@
                                 "matchPattern": "",
                                 "enableCondition": [
                                   {
-                                    "secureSocket.keyDataType": "KeyStore"
+                                    "keyDataType": "KeyStore"
                                   }
                                 ]
                               }
@@ -764,7 +764,7 @@
                                 "matchPattern": "",
                                 "enableCondition": [
                                   {
-                                    "secureSocket.keyDataType": "KeyStore"
+                                    "keyDataType": "KeyStore"
                                   }
                                 ]
                               }
@@ -782,7 +782,7 @@
                                 "matchPattern": "",
                                 "enableCondition": [
                                   {
-                                    "secureSocket.keyDataType": "CertKey"
+                                    "keyDataType": "CertKey"
                                   }
                                 ]
                               }
@@ -800,7 +800,7 @@
                                 "matchPattern": "",
                                 "enableCondition": [
                                   {
-                                    "secureSocket.keyDataType": "CertKey"
+                                    "keyDataType": "CertKey"
                                   }
                                 ]
                               }
@@ -818,7 +818,7 @@
                                 "matchPattern": "",
                                 "enableCondition": [
                                   {
-                                    "secureSocket.keyDataType": "CertKey"
+                                    "keyDataType": "CertKey"
                                   }
                                 ]
                               }
