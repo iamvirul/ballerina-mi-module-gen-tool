@@ -137,7 +137,17 @@ public class ParamFactory {
                     if (unionFieldParam.getUnionMemberParams().isEmpty()) {
                         continue;
                     }
-                    fieldParam = unionFieldParam;
+                    // If there's only one non-nil member, convert to a regular FunctionParam instead of UnionFunctionParam
+                    // This avoids generating a pointless combobox with a single selectable value (e.g., for optional fields like string?)
+                    if (unionFieldParam.getUnionMemberParams().size() == 1) {
+                        FunctionParam singleMember = unionFieldParam.getUnionMemberParams().getFirst();
+                        fieldParam = new FunctionParam(Integer.toString(fieldIndex), qualifiedFieldName, singleMember.getParamType());
+                        fieldParam.setTypeSymbol(singleMember.getTypeSymbol());
+                        // If the union was optional (nil was one of the members), the result should also be optional
+                        fieldParam.setRequired(unionFieldParam.isRequired());
+                    } else {
+                        fieldParam = unionFieldParam;
+                    }
                 } else if (fieldTypeKind == TypeDescKind.RECORD) {
                     // Create RecordFunctionParam for nested record fields
                     TypeSymbol actualTypeSymbol = Utils.getActualTypeSymbol(fieldTypeSymbol);
@@ -194,6 +204,18 @@ public class ParamFactory {
         // Note: Check AFTER both population attempts to ensure we try all possible ways to extract union members
         if (functionParam.getUnionMemberParams().isEmpty()) {
             return Optional.empty();
+        }
+        // If there's only one non-nil member, return it as a regular FunctionParam instead of a UnionFunctionParam
+        // This avoids generating a pointless combobox with a single selectable value (e.g., for optional types like string?)
+        if (functionParam.getUnionMemberParams().size() == 1) {
+            FunctionParam singleMember = functionParam.getUnionMemberParams().getFirst();
+            // Create a new FunctionParam with the original parameter's properties
+            FunctionParam simplifiedParam = new FunctionParam(Integer.toString(index), paramName, singleMember.getParamType());
+            simplifiedParam.setParamKind(parameterSymbol.paramKind());
+            simplifiedParam.setTypeSymbol(singleMember.getTypeSymbol());
+            // If the union was optional (nil was one of the members), the result should also be optional
+            simplifiedParam.setRequired(functionParam.isRequired());
+            return Optional.of(simplifiedParam);
         }
         return Optional.of(functionParam);
     }
