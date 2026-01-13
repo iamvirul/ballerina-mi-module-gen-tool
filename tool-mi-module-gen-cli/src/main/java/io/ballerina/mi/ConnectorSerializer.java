@@ -241,6 +241,9 @@ public class ConnectorSerializer {
             handlebar.registerHelper("writeConfigXmlParameters", (context, options) -> {
                 @SuppressWarnings("unchecked")
                 List<FunctionParam> functionParams = (List<FunctionParam>) context;
+                if (functionParams == null) {
+                    return new Handlebars.SafeString("");
+                }
                 StringBuilder result = new StringBuilder();
                 boolean[] isFirst = {true};
                 for (FunctionParam functionParam : functionParams) {
