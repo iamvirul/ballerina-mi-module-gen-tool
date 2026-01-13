@@ -1,6 +1,6 @@
 {
   "connectorName": "milvus",
-  "operationName": "list collections",
+  "operationName": "listCollections",
   "title": "list collections",
   "help": "Lists all the collections in the Milvus vector database.\n",
   "elements": [

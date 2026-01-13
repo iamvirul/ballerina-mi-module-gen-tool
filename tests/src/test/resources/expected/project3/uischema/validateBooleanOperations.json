@@ -1,7 +1,7 @@
 {
   "connectorName": "project3",
   "operationName": "validateBooleanOperations",
-  "title": "validateBooleanOperations",
+  "title": "validate boolean operations",
   "help": "",
   "elements": [
     {

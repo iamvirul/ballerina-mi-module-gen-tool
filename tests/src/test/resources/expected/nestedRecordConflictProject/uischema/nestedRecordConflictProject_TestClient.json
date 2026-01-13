@@ -22,16 +22,16 @@
         "groupName": "General",
         "elements": [
           {
-            "type": "attributeGroup",
-            "value": {
-              "groupName": "Basic",
-              "elements": [
-                {
-                  "type": "attributeGroup",
-                  "value": {
-                    "groupName": "Server",
-                    "elements": [
-                  {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Basic",
+    "collapsed": false,
+    "elements": [                  {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Server",
+    "collapsed": false,
+    "elements": [                  {
                   "type": "attribute",
                   "value": {
                     "name": "host",
@@ -71,11 +71,11 @@
                     ]
                   }
                 },{
-                  "type": "attributeGroup",
-                  "value": {
-                    "groupName": "Database",
-                    "elements": [
-                  {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Database",
+    "collapsed": false,
+    "elements": [                  {
                   "type": "attribute",
                   "value": {
                     "name": "host",
@@ -115,9 +115,9 @@
                     ]
                   }
                 }
-              ]
-            }
-          }
+                    ]
+                  }
+                }
         ]
       }
     }

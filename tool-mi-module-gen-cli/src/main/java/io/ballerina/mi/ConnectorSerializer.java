@@ -620,7 +620,7 @@ public class ConnectorSerializer {
                 break;
             case RECORD:
                 if (expandRecords) {
-                    writeRecordFields(functionParam, builder, expandRecords);
+                    writeRecordFields(functionParam, builder, expandRecords, groupName);
                 } else {
                     // Treat as single stringOrExpression field for regular function params
                     Attribute recordAttr = new Attribute(functionParam.getValue(), displayName,
@@ -944,7 +944,7 @@ public class ConnectorSerializer {
      * Otherwise, falls back to a single stringOrExpression field.
      */
     private static void writeRecordFields(FunctionParam functionParam, JsonTemplateBuilder builder,
-                                          boolean expandRecords) throws IOException {
+                                          boolean expandRecords, String parentGroupName) throws IOException {
         if (functionParam instanceof RecordFunctionParam recordParam && !recordParam.getRecordFieldParams().isEmpty()) {
             List<FunctionParam> recordFields = recordParam.getRecordFieldParams();
             
@@ -968,7 +968,7 @@ public class ConnectorSerializer {
             // Write top-level fields first (not grouped)
             for (int i = 0; i < topLevelFields.size(); i++) {
                 FunctionParam fieldParam = topLevelFields.get(i);
-                writeJsonAttributeForFunctionParam(fieldParam, i, topLevelFields.size(), builder, false, expandRecords, null);
+                writeJsonAttributeForFunctionParam(fieldParam, i, topLevelFields.size(), builder, false, expandRecords, parentGroupName);
             }
             
             // Write grouped nested fields
@@ -985,45 +985,61 @@ public class ConnectorSerializer {
                 
                 // Create attributeGroup for this nested type with Title Case name
                 String displayGroupName = camelCaseToTitleCase(groupName);
-                AttributeGroup attributeGroup = new AttributeGroup(displayGroupName);
-                builder.addFromTemplate(ATTRIBUTE_GROUP_TEMPLATE_PATH, attributeGroup);
 
-                // Write fields within this group
-                // The attributeGroup template ends with "elements": [ and a newline
-                // Add proper indentation (18 spaces) to align with the attribute template's content indentation
-                for (int i = 0; i < groupFields.size(); i++) {
-                    FunctionParam fieldParam = groupFields.get(i);
+                // Check for duplicate group name (flatten if matches parent)
+                if (parentGroupName != null && displayGroupName.equals(parentGroupName)) {
+                    // Flatten the group - duplicate of parent
+                    for (int i = 0; i < groupFields.size(); i++) {
+                        FunctionParam fieldParam = groupFields.get(i);
+                        // Use groupName to strip the prefix
+                        writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords, groupName);
+                        
+                        // Add separator if not last element
+                         if (i < groupFields.size() - 1) {
+                            builder.addSeparator(ATTRIBUTE_SEPARATOR);
+                        }
+                    }
+                } else {
+                    AttributeGroup attributeGroup = new AttributeGroup(displayGroupName);
+                    builder.addFromTemplate(ATTRIBUTE_GROUP_TEMPLATE_PATH, attributeGroup);
 
-                    // Remove the group name prefix from the field name
-                    String originalFieldName = fieldParam.getValue();
-                    String shortFieldName = removeGroupPrefix(originalFieldName, groupName);
+                    // Write fields within this group
+                    // The attributeGroup template ends with "elements": [ and a newline
+                    // Add proper indentation (18 spaces) to align with the attribute template's content indentation
+                    for (int i = 0; i < groupFields.size(); i++) {
+                        FunctionParam fieldParam = groupFields.get(i);
 
-                    // For UnionFunctionParam, don't change the value because the combo field name
-                    // needs to match the enable conditions (both use qualified name).
-                    // For other field types, temporarily modify the field name for display.
-                    boolean isUnion = fieldParam instanceof UnionFunctionParam;
-                    String savedFieldName = fieldParam.getValue();
-                    if (!isUnion) {
-                        fieldParam.setValue(shortFieldName);
+                        // Remove the group name prefix from the field name
+                        String originalFieldName = fieldParam.getValue();
+                        String shortFieldName = removeGroupPrefix(originalFieldName, groupName);
+
+                        // For UnionFunctionParam, don't change the value because the combo field name
+                        // needs to match the enable conditions (both use qualified name).
+                        // For other field types, temporarily modify the field name for display.
+                        boolean isUnion = fieldParam instanceof UnionFunctionParam;
+                        String savedFieldName = fieldParam.getValue();
+                        if (!isUnion) {
+                            fieldParam.setValue(shortFieldName);
+                        }
+
+                        // Add indentation before the first attribute in the group
+                        if (i == 0) {
+                            builder.addSeparator("                  ");  // 18 spaces to align with template content
+                        }
+                        // Pass groupName for union members to remove prefix from displayName
+                        writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords, isUnion ? groupName : null);
+
+                        // Restore original field name
+                        if (!isUnion) {
+                            fieldParam.setValue(savedFieldName);
+                        }
                     }
 
-                    // Add indentation before the first attribute in the group
-                    if (i == 0) {
-                        builder.addSeparator("                  ");  // 18 spaces to align with template content
-                    }
-                    // Pass groupName for union members to remove prefix from displayName
-                    writeJsonAttributeForFunctionParam(fieldParam, i, groupFields.size(), builder, false, expandRecords, isUnion ? groupName : null);
-
-                    // Restore original field name
-                    if (!isUnion) {
-                        fieldParam.setValue(savedFieldName);
-                    }
+                    // Close the attributeGroup - close elements array, value object, and attributeGroup object
+                    // Match the indentation format from the expected output
+                    builder.addSeparator("\n                    ]");
+                    builder.addSeparator("\n                  }");
                 }
-                
-                // Close the attributeGroup - close elements array, value object, and attributeGroup object
-                // Match the indentation format from the expected output
-                builder.addSeparator("\n                    ]");
-                builder.addSeparator("\n                  }");
                 
                 // Close attributeGroup with comma if there are more groups, otherwise just close it
                 // The comma should be on the same line as the closing brace: },{
@@ -1032,7 +1048,42 @@ public class ConnectorSerializer {
                     // Add closing brace and comma on same line, then newline
                     builder.addSeparator("\n                },");
                 } else {
-                    builder.addSeparator("\n                }");
+                    // Only close if we created a group (not flattened). 
+                    // Actually, the separator loop above handles "between groups". 
+                    // But if we flattened, we didn't open a group brace.
+                    // Wait, this loop structure separates "groups" with comma.
+                    // If we flattened, we just added attributes.
+                    // If the NEXT thing is a group, we need a comma.
+                    // But `writeJsonAttributeForFunctionParam` adds separator internally?
+                    // No, `writeJsonAttributeForFunctionParam` adds separator conditionally based on index.
+                    
+                    // ISSUE: If I flatten, I am injecting raw attributes.
+                    // The "wrapper" logic (lines 1031-1035) assumes we emitted a JSON object (AttributeGroup) that needs a comma after it.
+                    // But if we flattened, we emitted a series of objects, separated by commas (in loop).
+                    // The last object in flattened group does NOT have a comma.
+                    // If there is another group coming, we need a comma.
+                    // The separators for attributes are handled by `writeJsonAttributeForFunctionParam`?
+                    // No, line 705: `builder.addConditionalSeparator((index < paramLength - 1), ATTRIBUTE_SEPARATOR);`
+                    // In my flattened loop above, I call it with `groupFields.size()`.
+                    // So the last element will NOT have a comma.
+                    // So if `groupIndex < totalGroups - 1`, we DO need a comma.
+                    // But `builder.addSeparator("\n                },")` adds `},`. 
+                    // But if we flattened, we don't have a closing brace `}`.
+                    
+                    // Logic fix:
+                    if (!(parentGroupName != null && displayGroupName.equals(parentGroupName))) { 
+                        // Only close brace if we didn't flatten
+                        if (groupIndex < totalGroups - 1) {
+                           builder.addSeparator("\n                },");
+                        } else {
+                           builder.addSeparator("\n                }");
+                        }
+                    } else {
+                         // We flattened. If there are more groups, we need a comma.
+                         if (groupIndex < totalGroups - 1) {
+                            builder.addSeparator(ATTRIBUTE_SEPARATOR);
+                         }
+                    }
                 }
                 
                 groupIndex++;
@@ -1311,7 +1362,7 @@ public class ConnectorSerializer {
                     builder.addSeparator("                  "); // Indentation alignment
                 }
                 // Write param - expand records
-                writeJsonAttributeForFunctionParam(params.get(i), i, params.size(), builder, false, true, null);
+                writeJsonAttributeForFunctionParam(params.get(i), i, params.size(), builder, false, true, groupName);
             }
 
             // Close the attributeGroup

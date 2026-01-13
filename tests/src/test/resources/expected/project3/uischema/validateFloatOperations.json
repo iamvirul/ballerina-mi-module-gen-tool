@@ -1,7 +1,7 @@
 {
   "connectorName": "project3",
   "operationName": "validateFloatOperations",
-  "title": "validateFloatOperations",
+  "title": "validate float operations",
   "help": "",
   "elements": [
     {

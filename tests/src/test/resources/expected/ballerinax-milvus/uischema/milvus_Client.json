@@ -22,11 +22,11 @@
         "groupName": "General",
         "elements": [
           {
-            "type": "attributeGroup",
-            "value": {
-              "groupName": "Basic",
-              "elements": [
-                {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Basic",
+    "collapsed": false,
+    "elements": [                  {
                   "type": "attribute",
                   "value": {
                     "name": "serviceUrl",
@@ -38,12 +38,20 @@
                     "validateType": "",
                     "matchPattern": ""
                   }
+                }
+                    ]
+                  }
                 },{
-                  "type": "attributeGroup",
-                  "value": {
-                    "groupName": "Auth Config",
-                    "elements": [
-                  {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Advanced",
+    "collapsed": true,
+    "elements": [                  {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Auth Config",
+    "collapsed": false,
+    "elements": [                  {
                   "type": "attribute",
                   "value": {
                     "name": "token",
@@ -59,11 +67,11 @@
                     ]
                   }
                 },{
-                  "type": "attributeGroup",
-                  "value": {
-                    "groupName": "Credentials Config",
-                    "elements": [
-                  {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Credentials Config",
+    "collapsed": false,
+    "elements": [                  {
                   "type": "attribute",
                   "value": {
                     "name": "username",
@@ -199,11 +207,11 @@
                     "matchPattern": ""
                   }
                 },{
-                  "type": "attributeGroup",
-                  "value": {
-                    "groupName": "Secure Config",
-                    "elements": [
-                  {
+  "type": "attributeGroup",
+  "value": {
+    "groupName": "Secure Config",
+    "collapsed": false,
+    "elements": [                  {
                   "type": "attribute",
                   "value": {
                     "name": "clientKeyPath",
@@ -255,9 +263,9 @@
                     ]
                   }
                 }
-              ]
-            }
-          }
+                    ]
+                  }
+                }
         ]
       }
     }

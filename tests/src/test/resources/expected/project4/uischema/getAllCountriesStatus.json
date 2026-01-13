@@ -1,7 +1,7 @@
 {
   "connectorName": "project4",
   "operationName": "getAllCountriesStatus",
-  "title": "getAllCountriesStatus",
+  "title": "get all countries status",
   "help": "Get COVID-19 totals for all countries\n",
   "elements": [
     {
@@ -40,8 +40,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "yesterdayString",
@@ -65,8 +64,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "twoDaysAgoString",
@@ -90,8 +88,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "sortString",
@@ -115,8 +112,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "allowNullString",

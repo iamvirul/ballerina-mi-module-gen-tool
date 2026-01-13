@@ -22,7 +22,6 @@
     <!-- TODO: if union, the selected member type becomes a parameter-->
     <parameter name="baseUrl" description=""/>
     <parameter name="apiKey" description=""/>
-    <parameter name="config" description=""/>
     <sequence>
         <property name="PROJECT6_APICLIENT_objectTypeName" value="ApiClient"/>
         <property name="PROJECT6_APICLIENT_paramSize" value="2"/>
@@ -33,13 +32,11 @@
         <property name="PROJECT6_APICLIENT_config_paramType0" value="string"/>
         <property name="PROJECT6_APICLIENT_config_param1" value="apiKey"/>
         <property name="PROJECT6_APICLIENT_config_paramType1" value="string"/>
-        <property name="PROJECT6_APICLIENT_param0" value="config"/>
-        <property name="PROJECT6_APICLIENT_paramType0" value="record"/>
-        
+
         <class name="io.ballerina.stdlib.mi.BalConnectorConfig">
-            <property name="orgName" value="org"/>
+            <property name="orgName" value="testOrg"/>
             <property name="moduleName" value="project6"/>
-            <property name="version" value="0"/>
+            <property name="version" value="1"/>
         </class>
     </sequence>
 </template>

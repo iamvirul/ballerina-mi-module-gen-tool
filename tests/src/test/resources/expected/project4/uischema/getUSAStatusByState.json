@@ -1,7 +1,7 @@
 {
   "connectorName": "project4",
   "operationName": "getUSAStatusByState",
-  "title": "getUSAStatusByState",
+  "title": "get usastatus by state",
   "help": "Get COVID-19 totals for specific US State(s)\n",
   "elements": [
     {
@@ -52,8 +52,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "yesterdayString",
@@ -77,8 +76,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "allowNullString",

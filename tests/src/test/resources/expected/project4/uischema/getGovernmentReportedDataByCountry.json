@@ -1,7 +1,7 @@
 {
   "connectorName": "project4",
   "operationName": "getGovernmentReportedDataByCountry",
-  "title": "getGovernmentReportedDataByCountry",
+  "title": "get government reported data by country",
   "help": "Get COVID-19 government reported data for a specific country\n",
   "elements": [
     {
@@ -52,8 +52,7 @@
                     "required": "false",
                     "helpTip": ""
                   }
-                }
-,{
+                },{
                   "type": "attribute",
                   "value": {
                     "name": "allowNullString",

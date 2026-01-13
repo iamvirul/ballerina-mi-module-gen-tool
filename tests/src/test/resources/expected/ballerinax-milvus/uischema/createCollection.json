@@ -1,6 +1,6 @@
 {
   "connectorName": "milvus",
-  "operationName": "create collection",
+  "operationName": "createCollection",
   "title": "create collection",
   "help": "Creates a new collection in the Milvus vector database.\n",
   "elements": [
