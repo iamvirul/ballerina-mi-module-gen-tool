@@ -275,11 +275,50 @@ public class ConnectorSerializer {
                 Component component = (Component) context;
                 JsonTemplateBuilder builder = new JsonTemplateBuilder();
                 List<FunctionParam> functionParams = component.getFunctionParams();
-                for (FunctionParam functionParam : functionParams) {
-                    // Expand records for config (init) parameters
-                    writeJsonAttributeForFunctionParam(functionParam, functionParams.indexOf(functionParam),
-                            functionParams.size(), builder, false, true, null);
+
+                // Split parameters into Basic and Advanced
+                List<FunctionParam> basicParams = new ArrayList<>();
+                List<FunctionParam> advancedParams = new ArrayList<>();
+
+                // Flatten parameters: if a param is a record, extract its fields
+                List<FunctionParam> flattenedParams = new ArrayList<>();
+                for (FunctionParam param : functionParams) {
+                    if (param instanceof RecordFunctionParam recordParam && !recordParam.getRecordFieldParams().isEmpty()) {
+                        flattenedParams.addAll(recordParam.getRecordFieldParams());
+                    } else {
+                        flattenedParams.add(param);
+                    }
                 }
+
+                for (FunctionParam param : flattenedParams) {
+                    // Advanced params are optional records or params with default values or optional fields
+                    boolean isAdvanced = false;
+                    if (!param.isRequired() || (param.getDefaultValue() != null && !param.getDefaultValue().isEmpty())) {
+                        isAdvanced = true;
+                    }
+                    
+                    System.out.println("DEBUG: param=" + param.getValue() + 
+                                       " required=" + param.isRequired() + 
+                                       " default=" + param.getDefaultValue() + 
+                                       " isAdvanced=" + isAdvanced);
+
+                    if (isAdvanced) {
+                        advancedParams.add(param);
+                    } else {
+                        basicParams.add(param);
+                    }
+                }
+
+                // Write Basic Group
+                if (!basicParams.isEmpty()) {
+                    writeAttributeGroup("Basic", basicParams, advancedParams.isEmpty(), builder);
+                }
+
+                // Write Advanced Group
+                if (!advancedParams.isEmpty()) {
+                    writeAttributeGroup("Advanced", advancedParams, true, builder, true);
+                }
+
                 return new Handlebars.SafeString(builder.build());
             });
             handlebar.registerHelper("writeComponentJsonProperties", (context, options) -> {
@@ -1255,6 +1294,37 @@ public class ConnectorSerializer {
             throw new IllegalArgumentException("file not found " + fileName);
         } else {
             return inputStream;
+        }
+    }
+
+    private static void writeAttributeGroup(String groupName, List<FunctionParam> params, boolean isLastGroup, JsonTemplateBuilder builder) {
+        writeAttributeGroup(groupName, params, isLastGroup, builder, false);
+    }
+
+    private static void writeAttributeGroup(String groupName, List<FunctionParam> params, boolean isLastGroup, JsonTemplateBuilder builder, boolean collapsed) {
+        try {
+            AttributeGroup attributeGroup = new AttributeGroup(groupName, collapsed);
+            builder.addFromTemplate(ATTRIBUTE_GROUP_TEMPLATE_PATH, attributeGroup);
+
+            for (int i = 0; i < params.size(); i++) {
+                if (i == 0) {
+                    builder.addSeparator("                  "); // Indentation alignment
+                }
+                // Write param - expand records
+                writeJsonAttributeForFunctionParam(params.get(i), i, params.size(), builder, false, true, null);
+            }
+
+            // Close the attributeGroup
+            builder.addSeparator("\n                    ]");
+            builder.addSeparator("\n                  }");
+
+            if (isLastGroup) {
+                builder.addSeparator("\n                }");
+            } else {
+                builder.addSeparator("\n                },");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 }
