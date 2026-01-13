@@ -877,13 +877,24 @@ public class ConnectorSerializer {
         }
     }
 
+    /**
+     * Escapes XML special characters for use in XML attribute values.
+     * Note: Single quotes (') are NOT escaped because:
+     * 1. XML attributes in our templates are enclosed in double quotes, so single quotes are safe
+     * 2. &apos; is not universally supported (XML 1.0 doesn't include it, only XML 1.1)
+     * 3. Ballerina uses single quotes in syntax (e.g., 'string' for singleton types) which should remain as-is
+     * 
+     * @param value The string value to escape
+     * @return The escaped string safe for XML attribute values
+     */
     private static String escapeXml(String value) {
         if (value == null) return "";
+        // Escape in order: & first (to avoid double-escaping), then <, >, and "
+        // Do NOT escape single quotes - they're safe in double-quoted attributes
         return value.replace("&", "&amp;")
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&apos;");
+                .replace("\"", "&quot;");
     }
 
     /**
