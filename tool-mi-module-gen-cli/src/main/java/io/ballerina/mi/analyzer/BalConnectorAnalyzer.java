@@ -57,6 +57,14 @@ public class BalConnectorAnalyzer implements Analyzer {
     }
 
     private void analyzeModule(Package compilePackage, Module module) {
+        // Skip sub-modules - only process root-level module clients
+        // Sub-modules have non-empty moduleNamePart (e.g., "OAS" in googleapis.gmail.OAS)
+        // Root modules have null moduleNamePart
+        if (module.moduleName().moduleNamePart() != null && !module.moduleName().moduleNamePart().isEmpty()) {
+            printStream.println("Skipping sub-module: " + module.moduleName());
+            return;
+        }
+        
         SemanticModel semanticModel = compilePackage.getCompilation().getSemanticModel(module.moduleId());
         List<Symbol> moduleSymbols = semanticModel.moduleSymbols();
         List<Symbol> classSymbols = moduleSymbols.stream().filter((s) -> s instanceof BallerinaClassSymbol).toList();
